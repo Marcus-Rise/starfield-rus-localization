@@ -89,6 +89,7 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
     onboarding.md
     publish-to-creations.md
     transliterate-mod.md
+  commands/            # Slash commands: full-validate, transliterate-workflow, publish-check
 src/
   strings/            # Placeholders for string tables (binary, Git LFS)
   interface/          # Templates: fontconfig, translate; placeholder for fonts_en.swf
