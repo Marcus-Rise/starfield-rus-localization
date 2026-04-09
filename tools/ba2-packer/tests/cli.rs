@@ -434,6 +434,194 @@ fn test_transliterate_with_credit() {
     assert!(credits.contains("TestAuthor"));
 }
 
+// --- Transliterate: strings-only workflow (issue #48) ---
+
+/// Build a minimal STRINGS binary (null-terminated UTF-8).
+fn build_strings_binary(entries: &[(u32, &str)]) -> Vec<u8> {
+    let mut data_buf = Vec::new();
+    let mut offsets = Vec::new();
+    for (_, text) in entries {
+        offsets.push(data_buf.len());
+        data_buf.extend_from_slice(text.as_bytes());
+        data_buf.push(0);
+    }
+    let count = entries.len() as u32;
+    let data_size = data_buf.len() as u32;
+    let mut buf = Vec::new();
+    buf.extend_from_slice(&count.to_le_bytes());
+    buf.extend_from_slice(&data_size.to_le_bytes());
+    for (i, (id, _)) in entries.iter().enumerate() {
+        buf.extend_from_slice(&id.to_le_bytes());
+        buf.extend_from_slice(&(offsets[i] as u32).to_le_bytes());
+    }
+    buf.extend_from_slice(&data_buf);
+    buf
+}
+
+/// Build a minimal DLSTRINGS/ILSTRINGS binary (length-prefixed UTF-8).
+fn build_dlstrings_binary(entries: &[(u32, &str)]) -> Vec<u8> {
+    let mut data_buf = Vec::new();
+    let mut offsets = Vec::new();
+    for (_, text) in entries {
+        offsets.push(data_buf.len());
+        let bytes = text.as_bytes();
+        data_buf.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+        data_buf.extend_from_slice(bytes);
+    }
+    let count = entries.len() as u32;
+    let data_size = data_buf.len() as u32;
+    let mut buf = Vec::new();
+    buf.extend_from_slice(&count.to_le_bytes());
+    buf.extend_from_slice(&data_size.to_le_bytes());
+    for (i, (id, _)) in entries.iter().enumerate() {
+        buf.extend_from_slice(&id.to_le_bytes());
+        buf.extend_from_slice(&(offsets[i] as u32).to_le_bytes());
+    }
+    buf.extend_from_slice(&data_buf);
+    buf
+}
+
+/// Build a translate_en.txt file in UTF-16LE with BOM.
+fn build_translate_utf16le(text: &str) -> Vec<u8> {
+    let mut result: Vec<u8> = vec![0xFF, 0xFE];
+    for unit in text.encode_utf16() {
+        result.extend_from_slice(&unit.to_le_bytes());
+    }
+    result
+}
+
+#[test]
+fn test_transliterate_all_three_formats() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    // Create one file per format with Cyrillic text
+    fs::write(
+        input.path().join("starfield_en.STRINGS"),
+        build_strings_binary(&[(1, "Привет")]),
+    )
+    .unwrap();
+    fs::write(
+        input.path().join("starfield_en.DLSTRINGS"),
+        build_dlstrings_binary(&[(2, "Диалог")]),
+    )
+    .unwrap();
+    fs::write(
+        input.path().join("starfield_en.ILSTRINGS"),
+        build_dlstrings_binary(&[(3, "Предмет")]),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Processed: 3 file(s)"));
+
+    // All three output files must exist with original filenames
+    assert!(output.path().join("starfield_en.STRINGS").exists());
+    assert!(output.path().join("starfield_en.DLSTRINGS").exists());
+    assert!(output.path().join("starfield_en.ILSTRINGS").exists());
+}
+
+#[test]
+fn test_transliterate_with_translate_file() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    // String table + translate_en.txt together
+    fs::write(
+        input.path().join("starfield_en.STRINGS"),
+        build_strings_binary(&[(1, "Тест")]),
+    )
+    .unwrap();
+    fs::write(
+        input.path().join("translate_en.txt"),
+        build_translate_utf16le("$sKey1\tЗначение"),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Processed: 2 file(s)"));
+
+    assert!(output.path().join("starfield_en.STRINGS").exists());
+    assert!(output.path().join("translate_en.txt").exists());
+}
+
+#[test]
+fn test_transliterate_empty_dir_error_message() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "No files were found to transliterate",
+        ));
+}
+
+#[test]
+fn test_transliterate_strings_subdirectory_preserved_names() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    // Place files in Strings/ subdirectory (common game layout)
+    let strings_dir = input.path().join("Strings");
+    fs::create_dir(&strings_dir).unwrap();
+    fs::write(
+        strings_dir.join("starfield_en.STRINGS"),
+        build_strings_binary(&[(1, "Космос")]),
+    )
+    .unwrap();
+    fs::write(
+        strings_dir.join("blueprintships-starfield_en.DLSTRINGS"),
+        build_dlstrings_binary(&[(2, "Корабль")]),
+    )
+    .unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Processed: 2 file(s)"));
+
+    // Output filenames must match originals
+    assert!(output.path().join("starfield_en.STRINGS").exists());
+    assert!(output
+        .path()
+        .join("blueprintships-starfield_en.DLSTRINGS")
+        .exists());
+}
+
 // --- Smoke Test ---
 
 #[test]
