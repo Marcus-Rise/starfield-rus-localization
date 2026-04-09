@@ -62,13 +62,14 @@ jobs:
             echo "No string table or interface files found, skipping BA2 packing"
           fi
 
-      - name: Validate (if artifacts exist)
+      - name: Validate
         run: |
+          VALIDATE_ARGS=(dist --source-strings src/strings --source-interface src/interface)
+          if [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
+            VALIDATE_ARGS+=(--require-credits)
+          fi
           if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist \
-              --source-strings src/strings \
-              --source-interface src/interface \
-              --require-credits
+            ./tools/ba2-packer/target/release/ba2-packer validate "${VALIDATE_ARGS[@]}"
           else
             echo "No artifacts to validate"
           fi

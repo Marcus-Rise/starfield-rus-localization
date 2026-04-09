@@ -60,30 +60,37 @@ jobs:
               --OutputPath dist/StarfieldRussian.esm \
               --GameRelease Starfield
           else
-            echo "No plugin source files found, skipping ESM build"
+            echo "No Spriggit plugin source found, using create-esm fallback"
             mkdir -p dist
+            ./tools/ba2-packer/target/release/ba2-packer create-esm \
+              --output dist/StarfieldRussian.esm
           fi
 
       - name: Pack BA2 archives
+        env:
+          TRANSLATION_CREDIT: ${{ vars.TRANSLATION_CREDIT }}
         run: |
           if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
              [ -f src/interface/fonts_en.swf ]; then
-            ./tools/ba2-packer/target/release/ba2-packer pack \
-              --input-strings src/strings \
-              --input-interface src/interface \
-              --output-dir dist
+            PACK_ARGS=(--input-strings src/strings --input-interface src/interface --output-dir dist)
+            if [ -n "$TRANSLATION_CREDIT" ]; then
+              PACK_ARGS+=(--credit "$TRANSLATION_CREDIT")
+            fi
+            ./tools/ba2-packer/target/release/ba2-packer pack "${PACK_ARGS[@]}"
           else
             echo "No string table or interface files found, skipping BA2 packing"
           fi
 
-      - name: Validate (if artifacts exist)
+      - name: Validate
         run: |
+          VALIDATE_ARGS=(dist --source-strings src/strings --source-interface src/interface)
+          if [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
+            VALIDATE_ARGS+=(--require-credits)
+          fi
           if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist \
-              --source-strings src/strings \
-              --source-interface src/interface
+            ./tools/ba2-packer/target/release/ba2-packer validate "${VALIDATE_ARGS[@]}"
           else
             echo "No artifacts to validate"
           fi
