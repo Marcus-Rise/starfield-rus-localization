@@ -412,7 +412,7 @@ fn collect_checks(
     }
     let interface_dir_owned = dist_dir.join("Interface");
     let interface_dir = source_interface.unwrap_or(&interface_dir_owned);
-    collect_interface_checks(&mut results, dist_dir, interface_dir)?;
+    collect_interface_checks(&mut results, &interface_dir_owned, interface_dir)?;
 
     // BA2 archives (required)
     for (name, path) in [
@@ -444,11 +444,11 @@ fn collect_checks(
 
 fn collect_interface_checks(
     results: &mut Vec<ValidationResult>,
-    dist_dir: &Path,
+    dist_interface_dir: &Path,
     interface_dir: &Path,
 ) -> Result<()> {
     // translate_en.txt
-    let translate_data = read_with_fallback(interface_dir, dist_dir, "translate_en.txt")?;
+    let translate_data = read_with_fallback(interface_dir, dist_interface_dir, "translate_en.txt")?;
     if let Some(data) = translate_data {
         results.push(check_translate_encoding(&data));
         results.push(check_translate_format(&data));
@@ -460,7 +460,8 @@ fn collect_interface_checks(
     }
 
     // fontconfig_en.txt
-    let fontconfig_data = read_with_fallback(interface_dir, dist_dir, "fontconfig_en.txt")?;
+    let fontconfig_data =
+        read_with_fallback(interface_dir, dist_interface_dir, "fontconfig_en.txt")?;
     if let Some(data) = fontconfig_data {
         results.push(check_fontconfig_fontlib(&data));
         results.push(check_fontconfig_cyrillic(&data));
@@ -472,7 +473,7 @@ fn collect_interface_checks(
     }
 
     // fonts_en.swf
-    let swf_data = read_with_fallback(interface_dir, dist_dir, "fonts_en.swf")?;
+    let swf_data = read_with_fallback(interface_dir, dist_interface_dir, "fonts_en.swf")?;
     if let Some(data) = swf_data {
         results.push(check_swf_magic(&data));
     } else {
