@@ -1,3 +1,4 @@
+use crate::transliterate::normalize_translate_data;
 use anyhow::{bail, Context, Result};
 use ba2::fo4::{
     Archive, ArchiveKey, ArchiveOptions, Chunk, CompressionFormat, File, Format, Version,
@@ -65,8 +66,13 @@ fn collect_interface_files(input_interface: &Path) -> Result<Vec<(String, Vec<u8
     for filename in INTERFACE_FILES {
         let filepath = input_interface.join(filename);
         if filepath.exists() {
-            let data = fs::read(&filepath)
+            let mut data = fs::read(&filepath)
                 .with_context(|| format!("Failed to read {}", filepath.display()))?;
+            // Normalize quoted CSV lines in translate_en.txt before packing
+            if *filename == "translate_en.txt" {
+                data = normalize_translate_data(&data)
+                    .with_context(|| format!("Failed to normalize {}", filepath.display()))?;
+            }
             let archive_path = format!("Interface/{filename}");
             files.push((archive_path, data));
         }
@@ -230,6 +236,40 @@ mod tests {
         let files = collect_interface_files(dir.path()).unwrap();
         assert_eq!(files.len(), 1);
         assert_eq!(files[0].0, "Interface/fontconfig_en.txt");
+    }
+
+    #[test]
+    fn test_collect_interface_files_normalizes_translate_csv() {
+        let dir = TempDir::new().unwrap();
+
+        // Write a translate_en.txt with quoted CSV content (UTF-16LE with BOM)
+        let csv_text = "\"$KEY1\tOriginal\",\"Translation\"\n";
+        let mut data = vec![0xFF, 0xFE]; // BOM
+        for unit in csv_text.encode_utf16() {
+            data.extend_from_slice(&unit.to_le_bytes());
+        }
+        fs::write(dir.path().join("translate_en.txt"), &data).unwrap();
+
+        let files = collect_interface_files(dir.path()).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].0, "Interface/translate_en.txt");
+
+        // Verify the packed data is normalized (not raw CSV)
+        let packed_data = &files[0].1;
+        // Decode UTF-16LE (skip BOM)
+        let u16s: Vec<u16> = packed_data[2..]
+            .chunks_exact(2)
+            .map(|c| u16::from_le_bytes([c[0], c[1]]))
+            .collect();
+        let text = String::from_utf16(&u16s).unwrap();
+        assert!(
+            text.contains("$KEY1\tTranslation"),
+            "Expected normalized format, got: {text}"
+        );
+        assert!(
+            !text.contains('"'),
+            "CSV quotes should be stripped, got: {text}"
+        );
     }
 
     #[test]

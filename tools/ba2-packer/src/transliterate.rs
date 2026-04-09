@@ -140,6 +140,51 @@ pub(crate) fn normalize_csv_line(line: &str) -> String {
     format!("{key}\t{field2}")
 }
 
+/// Normalize a `translate_en.txt` file (UTF-16LE with BOM) in place.
+/// Converts any quoted CSV lines to standard `$KEY\tValue` format without transliteration.
+/// Used by the `pack` path to ensure the archived file is in game-compatible format.
+pub(crate) fn normalize_translate_data(data: &[u8]) -> Result<Vec<u8>> {
+    let raw = if data.starts_with(&[0xFF, 0xFE]) {
+        &data[2..]
+    } else {
+        data
+    };
+
+    if raw.len() % 2 != 0 {
+        bail!("translate file has odd byte count, not valid UTF-16LE");
+    }
+    let u16_units: Vec<u16> = raw
+        .chunks_exact(2)
+        .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
+        .collect();
+    let text = String::from_utf16(&u16_units).context("Invalid UTF-16LE in translate file")?;
+
+    // Check if any line needs normalization; if not, return data unchanged
+    let needs_normalization = text.lines().any(|line| line.starts_with("\"$"));
+    if !needs_normalization {
+        return Ok(data.to_vec());
+    }
+
+    let mut output_lines: Vec<String> = Vec::new();
+    for line in text.lines() {
+        output_lines.push(normalize_csv_line(line));
+    }
+
+    let joined = output_lines.join("\n");
+    let final_text = if text.ends_with('\n') {
+        format!("{joined}\n")
+    } else {
+        joined
+    };
+
+    let mut result: Vec<u8> = vec![0xFF, 0xFE];
+    for unit in final_text.encode_utf16() {
+        result.extend_from_slice(&unit.to_le_bytes());
+    }
+
+    Ok(result)
+}
+
 /// Process a `translate_en.txt` file (UTF-16LE with BOM).
 /// Lines have `$KEY\tValue` format — keys are preserved, values are transliterated.
 fn transliterate_translate_file(data: &[u8]) -> Result<Vec<u8>> {
@@ -811,5 +856,32 @@ mod tests {
         let text = String::from_utf16(&u16s).unwrap();
         assert!(text.contains("$KEY1\tZnachenie"));
         assert!(text.contains("$KEY2\tTekst"));
+    }
+
+    // --- normalize_translate_data ---
+
+    #[test]
+    fn test_normalize_translate_data_standard_passthrough() {
+        let input = make_utf16le_with_bom("$KEY\tValue\n$KEY2\tValue2\n");
+        let result = normalize_translate_data(&input).unwrap();
+        assert_eq!(result, input);
+    }
+
+    #[test]
+    fn test_normalize_translate_data_quoted_csv() {
+        let input =
+            make_utf16le_with_bom("\"$KEY1\tOriginal\",\"Translation\"\n\"$KEY2\",\"Value2\"\n");
+        let result = normalize_translate_data(&input).unwrap();
+        let expected = make_utf16le_with_bom("$KEY1\tTranslation\n$KEY2\tValue2\n");
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_normalize_translate_data_mixed_formats() {
+        let input =
+            make_utf16le_with_bom("$STANDARD\tValue\n\"$CSV\tOrig\",\"Trans\"\n$ANOTHER\tVal\n");
+        let result = normalize_translate_data(&input).unwrap();
+        let expected = make_utf16le_with_bom("$STANDARD\tValue\n$CSV\tTrans\n$ANOTHER\tVal\n");
+        assert_eq!(result, expected);
     }
 }
