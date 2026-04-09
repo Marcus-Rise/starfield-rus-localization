@@ -79,6 +79,7 @@ cargo run --release -- validate ../../dist \
 ## Куда смотреть дальше
 
 - [docs/WORKFLOW.md](docs/WORKFLOW.md) — пошаговые сценарии сборки
+- [docs/TRANSLIT_RELEASE_PLAYBOOK.md](docs/TRANSLIT_RELEASE_PLAYBOOK.md) — короткий practical playbook для translit-варианта со стандартными игровыми шрифтами
 - [docs/PUBLISH_CREATIONS.md](docs/PUBLISH_CREATIONS.md) — публикация в Bethesda Creations
 - [docs/PUBLISH_NEXUS.md](docs/PUBLISH_NEXUS.md) — публикация на Nexus Mods
 
