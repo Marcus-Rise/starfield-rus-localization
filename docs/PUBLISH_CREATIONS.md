@@ -8,6 +8,8 @@
 
 Руководство для со-автора по загрузке мода в Bethesda Creations (PS5, Xbox, PC).
 
+> **Агент-проводник**: `.claude/agents/publish-to-creations.md` — пошаговый чеклист для публикации.
+
 ## Требования
 
 - Windows PC
