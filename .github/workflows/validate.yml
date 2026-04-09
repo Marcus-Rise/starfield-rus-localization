@@ -41,7 +41,7 @@ jobs:
       - name: Verify CLI subcommands documented in README
         run: |
           HELP=$(./tools/ba2-packer/target/release/ba2-packer --help 2>&1)
-          CMDS=$(echo "$HELP" | sed -n '/Commands:/,/Options:/p' | grep -E '^\s+\w' | awk '{print $1}')
+          CMDS=$(echo "$HELP" | sed -n '/Commands:/,/Options:/p' | grep -E '^\s+\w' | awk '{print $1}' | grep -v '^help$')
           FAIL=0
           for cmd in $CMDS; do
             if ! grep -q "$cmd" README.md; then
