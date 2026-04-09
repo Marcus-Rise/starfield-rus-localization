@@ -1,4 +1,5 @@
 use crate::string_table::{parse_string_table, StringTableType};
+use crate::transliterate::normalize_csv_line;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -211,13 +212,15 @@ fn check_translate_format(data: &[u8]) -> ValidationResult {
         if line.is_empty() {
             continue;
         }
-        if !line.starts_with('$') {
+        // Normalize quoted CSV lines (e.g., "$KEY\tOrig","Translation" → $KEY\tTranslation)
+        let normalized = normalize_csv_line(line);
+        if !normalized.starts_with('$') {
             return ValidationResult::fail(
                 check,
                 &format!("Line {} does not start with '$': {}", i + 1, line),
             );
         }
-        if !line.contains('\t') {
+        if !normalized.contains('\t') {
             return ValidationResult::fail(
                 check,
                 &format!("Line {} missing tab separator: {}", i + 1, line),
@@ -685,6 +688,16 @@ mod tests {
         }
         let result = check_translate_format(&data);
         assert!(result.is_failed());
+    }
+
+    #[test]
+    fn test_check_translate_format_quoted_csv() {
+        let mut data = vec![0xFF, 0xFE];
+        for c in "\"$KEY\tOriginal\",\"Translation\"\n\"$KEY2\",\"Value2\"\n".encode_utf16() {
+            data.extend_from_slice(&c.to_le_bytes());
+        }
+        let result = check_translate_format(&data);
+        assert!(result.is_passed());
     }
 
     #[test]
