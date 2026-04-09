@@ -72,7 +72,6 @@ Execute in order:
 
 - Final artifacts target Bethesda Creations for PS5 — output MUST be BA2 archives
 - Do NOT suggest INI modifications (e.g., `sResourceStartUpArchiveList`) — causes PS5 hangs
-- BA2 files revert after game updates — warn user to re-apply mod after Starfield patches
 - If `fonts_en.swf` is missing from `src/interface/`, warn that Cyrillic text will not render on PS5
 
 ## Post-Build Documentation Check

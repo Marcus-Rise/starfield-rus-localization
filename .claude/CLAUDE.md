@@ -27,7 +27,7 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
 2. **No INI modifications** — any INI changes on PS5 cause console hangs; crash logs are sent to Sony and risk hardware ban
 3. **No native Cyrillic** — engine fonts lack Cyrillic glyphs; must inject via `fonts_en.swf` using JPEXS FFDec
 4. **BA2 revert on updates** — game updates reset custom BA2 files; mod must be re-applied after each patch
-5. **Never set PS5 language to Russian** — causes console hang (engine tries to load missing `_ru` resources)
+5. **Never set PS5 language to Russian** — causes console hang
 6. **Creations is the only distribution path** — no sideloading on PS5
 7. **Transliteration as fallback** — PS5 community accepts Cyrillic→Latin transliterated text when font injection is not viable
 
