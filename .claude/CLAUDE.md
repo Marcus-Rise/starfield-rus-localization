@@ -10,8 +10,8 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
 ## Project Decisions
 
 ### Tooling
-- **Rust only** — no Python/Node.js. Single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`
-- **Rust dependencies**: `ba2` (bsa-rs), `clap` (derive), `anyhow`, `encoding_rs`
+- **Rust only** — no Python/Node.js. Single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`
+- **Rust dependencies**: `ba2` (bsa-rs), `clap` (derive), `anyhow`, `encoding_rs`, `serde`/`serde_json`
 
 ### Copyright
 - **Fonts**: Repository MUST NOT contain proprietary fonts (NB Architekt, NB Grotesk, Handwritten_Institute). Only tools and instructions for creating SWF with free fonts (SIL OFL: PT Sans, Noto Sans, etc.) via JPEXS FFDec
@@ -33,6 +33,18 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
 4. **ALWAYS** run `cargo test` before committing
 5. **ALWAYS** run `cargo fmt --check` before committing
 6. **ALWAYS** follow TDD — write tests first, then implementation
+7. **ALWAYS** update documentation when adding/modifying CLI subcommands:
+   - `README.md` (command table, examples)
+   - `CLAUDE.md` (root — subcommand list)
+   - `.claude/CLAUDE.md` (tooling section, project structure)
+   - `docs/WORKFLOW.md` (if workflow changes)
+   - `docs/DOR_DOD.md` (if DoD criteria change)
+   - `CONTRIBUTING.md` (if user-facing workflow changes)
+   - `.claude/agents/build-mod.md` (if build pipeline changes)
+8. **ALWAYS** run documentation self-review before completing a PR:
+   - Verify all docs reference the current set of subcommands
+   - Verify examples match current CLI interface (`ba2-packer --help`)
+   - Verify agents (`.claude/agents/`) reflect the actual build pipeline
 
 ## Project Structure
 
@@ -45,7 +57,7 @@ src/
   strings/            # Placeholders for string tables (binary, Git LFS)
   interface/          # Templates: fontconfig, translate; placeholder for fonts_en.swf
   plugin/             # Placeholder for Spriggit ESM
-tools/ba2-packer/     # Rust CLI: pack, validate, rename
+tools/ba2-packer/     # Rust CLI: pack, validate, rename, extract, repack, create-esm, transliterate
 docs/                 # Project documentation
 .github/workflows/    # CI/CD
 ```

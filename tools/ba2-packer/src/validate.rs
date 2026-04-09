@@ -351,6 +351,19 @@ fn warn_font_preloading(dist_dir: &Path) -> ValidationResult {
     }
 }
 
+fn warn_missing_credits(dist_dir: &Path) -> ValidationResult {
+    let check = "Attribution (CREDITS.txt)";
+    let credits_path = dist_dir.join("CREDITS.txt");
+    if credits_path.exists() {
+        ValidationResult::pass(check)
+    } else {
+        ValidationResult::warn(
+            check,
+            "No CREDITS.txt found — add --credit flag to pack if using third-party translation",
+        )
+    }
+}
+
 fn collect_checks(
     dist_dir: &Path,
     source_strings: Option<&Path>,
@@ -436,6 +449,7 @@ fn collect_checks(
 
     results.push(check_total_size(dist_dir));
     results.push(warn_font_preloading(dist_dir));
+    results.push(warn_missing_credits(dist_dir));
     Ok(results)
 }
 
@@ -829,6 +843,27 @@ mod tests {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
         let result = warn_font_preloading(dist.path());
+        assert!(result.is_passed());
+    }
+
+    #[test]
+    fn test_warn_missing_credits_no_file() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let result = warn_missing_credits(dist.path());
+        assert!(result.is_warning());
+    }
+
+    #[test]
+    fn test_warn_missing_credits_file_present() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        fs::write(
+            dist.path().join("CREDITS.txt"),
+            "Translation by: Test Author\n",
+        )
+        .unwrap();
+        let result = warn_missing_credits(dist.path());
         assert!(result.is_passed());
     }
 }

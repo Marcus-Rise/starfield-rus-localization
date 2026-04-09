@@ -49,7 +49,7 @@ Starfield на PS5 не поддерживает русский язык. Дви
 
 ```bash
 git clone --recurse-submodules <repo-url>
-cd starfield-rus-localization-
+cd starfield-rus-localization
 
 # Сборка CLI инструмента
 cd tools/ba2-packer
@@ -74,18 +74,26 @@ cargo run --release -- validate ../../dist
 
 ## CLI инструмент (ba2-packer)
 
-Единый Rust CLI с тремя подкомандами:
+Единый Rust CLI с семью подкомандами:
 
 | Команда | Описание |
 |---------|----------|
 | `pack` | Упаковка файлов перевода в BA2-архивы |
 | `validate` | Валидация собранного мода (13 проверок) |
 | `rename` | Переименование файлов `_ru` → `_en` |
+| `extract` | Извлечение строковых таблиц в JSONL для редактирования |
+| `repack` | Сборка JSONL обратно в бинарные строковые таблицы |
+| `create-esm` | Генерация минимального ESM-плагина |
+| `transliterate` | Транслитерация кириллицы в латиницу |
 
 ```bash
 ba2-packer pack --input-strings <DIR> --input-interface <DIR> --output-dir <DIR>
 ba2-packer validate <DIST_DIR>
 ba2-packer rename --input-dir <DIR> --output-dir <DIR>
+ba2-packer extract --input <FILE_OR_DIR> --output-dir <DIR>
+ba2-packer repack --input <FILE_OR_DIR> --output-dir <DIR>
+ba2-packer create-esm --output <PATH>
+ba2-packer transliterate --input-dir <DIR> --output-dir <DIR> [--credit <AUTHOR>]
 ```
 
 ## Структура проекта
