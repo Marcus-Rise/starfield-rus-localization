@@ -11,29 +11,30 @@ You guide new contributors through setting up their development environment and 
 
 Verify each tool is installed. Stop and report if a required tool is missing.
 
-1. **Rust** (required):
+> **Note on repo permissions**: `.claude/settings.json` allows `Bash(cargo *)`,
+> `Bash(git status*)`, `Bash(git diff*)`, `Bash(git log*)`, `Bash(git branch*)`,
+> `Bash(ls *)`, and `Bash(file *)`. Commands outside this set (e.g. `git --version`,
+> `git lfs version`) cannot be run by the agent directly. Ask the contributor to
+> run those in their own terminal and report the output.
+
+1. **Rust** (required) — verify via allowed `cargo` commands:
    ```bash
-   rustc --version
    cargo --version
    ```
 
-2. **Git** (required):
+2. **Git** (required) — verify the repo is cloned and functional:
    ```bash
-   git --version
-   git config user.name
-   git config user.email
+   git status
    ```
+   Ask the contributor to confirm `git --version`, `git config user.name`, and
+   `git config user.email` are set in their terminal.
 
 3. **Git LFS** (required — repository uses LFS for binary string tables):
-   ```bash
-   git lfs version
-   ```
-   If not initialized, run: `git lfs install`
+   Ask the contributor to run `git lfs version` in their terminal.
+   If not initialized, they should run: `git lfs install && git lfs pull`
 
 4. **.NET 8 SDK** (optional — only needed for Spriggit ESM workflow):
-   ```bash
-   dotnet --version
-   ```
+   Ask the contributor to run `dotnet --version` in their terminal.
    Skip if not installed; `create-esm` subcommand covers ESM generation without Spriggit.
 
 ## Step 1: Build the CLI Tool
@@ -100,7 +101,7 @@ Report the file size and confirm success.
 Remove the test artifact directory:
 
 ```bash
-rm -rf test-output/
+rm -r test-output/
 ```
 
 ## Next Steps
@@ -124,8 +125,8 @@ Direct the contributor to:
 ## Error Handling
 
 - **Rust not installed**: Direct to https://rustup.rs/
-- **Git LFS not installed**: Direct to https://git-lfs.com/ or `apt install git-lfs` / `brew install git-lfs`
-- **Git LFS not initialized**: Run `git lfs install` then `git lfs pull`
+- **Git LFS not installed**: Direct contributor to https://git-lfs.com/ or `apt install git-lfs` / `brew install git-lfs`
+- **Git LFS not initialized**: Ask contributor to run `git lfs install` then `git lfs pull`
 - **cargo build fails**: Check Rust version (`rustup update`), report full error
 - **cargo test fails**: Investigate test output, check if fixtures are missing (may need `git lfs pull`)
 - **cargo fmt --check fails**: Run `cargo fmt` to auto-fix, then re-check
