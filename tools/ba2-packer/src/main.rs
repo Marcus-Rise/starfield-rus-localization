@@ -9,7 +9,7 @@ mod transliterate;
 mod validate;
 
 use anyhow::Context;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
@@ -18,6 +18,24 @@ use std::path::{Path, PathBuf};
 struct Cli {
     #[command(subcommand)]
     command: Commands,
+}
+
+/// CLI-level validation profile (maps to `validate::ValidationProfile`).
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum CliValidationProfile {
+    /// Full validation — all interface files required
+    Full,
+    /// Standard-font translit — skip `fontconfig_en.txt` and `fonts_en.swf` checks
+    StandardFontTranslit,
+}
+
+impl From<CliValidationProfile> for validate::ValidationProfile {
+    fn from(cli: CliValidationProfile) -> Self {
+        match cli {
+            CliValidationProfile::Full => Self::Full,
+            CliValidationProfile::StandardFontTranslit => Self::StandardFontTranslit,
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -57,6 +75,11 @@ enum Commands {
         /// Require CREDITS.txt (fail instead of warn if missing)
         #[arg(long)]
         require_credits: bool,
+
+        /// Validation profile: "full" (default) checks all interface files;
+        /// "standard-font-translit" skips `fontconfig_en.txt` and `fonts_en.swf` checks
+        #[arg(long, value_enum, default_value_t = CliValidationProfile::Full)]
+        profile: CliValidationProfile,
     },
 
     /// Extract binary string tables to human-readable JSONL format
@@ -154,11 +177,13 @@ fn main() -> anyhow::Result<()> {
             source_strings,
             source_interface,
             require_credits,
+            profile,
         } => validate::run(
             &dist_dir,
             source_strings.as_deref(),
             source_interface.as_deref(),
             require_credits,
+            profile.into(),
         ),
         Commands::Extract { input, output_dir } => extract::run(&input, &output_dir),
         Commands::Repack { input, output_dir } => repack::run(&input, &output_dir),

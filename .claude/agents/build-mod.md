@@ -49,7 +49,10 @@ Execute in order:
 
 6. **Validate output** (only if dist/ was produced):
    ```bash
+   # Full validation (Cyrillic fonts included):
    cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
+   # Standard-font translit (no custom fonts):
+   cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface --profile standard-font-translit
    ```
 
 ## Paths

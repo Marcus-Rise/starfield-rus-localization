@@ -88,8 +88,13 @@ cd tools/ba2-packer && cargo run --release -- pack \
 
 ### 9. Validate
 
+Use the `standard-font-translit` profile if the build does not include custom Cyrillic fonts (`fontconfig_en.txt` / `fonts_en.swf`):
+
 ```bash
-cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
+cd tools/ba2-packer && cargo run --release -- validate ../../dist \
+  --source-strings ../../src/strings \
+  --source-interface ../../src/interface \
+  --profile standard-font-translit
 ```
 
 Report all results. If any validation check fails, list it and suggest a fix.

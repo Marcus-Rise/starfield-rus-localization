@@ -148,7 +148,7 @@ cargo run --release -- validate ../../dist --source-strings ../../src/strings --
 | Команда | Описание |
 |---------|----------|
 | `pack` | Упаковка файлов перевода в BA2-архивы |
-| `validate` | Валидация собранного мода (13 проверок) |
+| `validate` | Валидация собранного мода (поддерживает профили `full` и `standard-font-translit`) |
 | `rename` | Переименование файлов `_ru` → `_en` |
 | `extract` | Извлечение строковых таблиц в JSONL для редактирования |
 | `repack` | Сборка JSONL обратно в бинарные строковые таблицы |
@@ -158,7 +158,7 @@ cargo run --release -- validate ../../dist --source-strings ../../src/strings --
 
 ```bash
 ba2-packer pack --input-strings <DIR> --input-interface <DIR> --output-dir <DIR>
-ba2-packer validate <DIST_DIR> [--source-strings <DIR>] [--source-interface <DIR>]
+ba2-packer validate <DIST_DIR> [--source-strings <DIR>] [--source-interface <DIR>] [--profile full|standard-font-translit]
 ba2-packer rename --input-dir <DIR> --output-dir <DIR>
 ba2-packer extract --input <FILE_OR_DIR> --output-dir <DIR>
 ba2-packer repack --input <FILE_OR_DIR> --output-dir <DIR>
