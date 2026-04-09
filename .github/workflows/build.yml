@@ -66,13 +66,17 @@ jobs:
 
       - name: Pack BA2 archives
         run: |
-          if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1; then
+          if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || \
+             ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
+             ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
+             ls src/interface/fonts_en.swf 1>/dev/null 2>&1 || \
+             ls src/interface/translate_en.txt 1>/dev/null 2>&1; then
             ./tools/ba2-packer/target/release/ba2-packer pack \
               --input-strings src/strings \
               --input-interface src/interface \
               --output-dir dist
           else
-            echo "No string table files found, skipping BA2 packing"
+            echo "No string table or interface files found, skipping BA2 packing"
           fi
 
       - name: Validate (if artifacts exist)

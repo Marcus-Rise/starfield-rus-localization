@@ -44,7 +44,7 @@ jobs:
           CMDS=$(echo "$HELP" | sed -n '/Commands:/,/Options:/p' | grep -E '^\s+\w' | awk '{print $1}' | grep -v '^help$')
           FAIL=0
           for cmd in $CMDS; do
-            if ! grep -q "$cmd" README.md; then
+            if ! grep -qw "$cmd" README.md; then
               echo "ERROR: subcommand '$cmd' not documented in README.md"
               FAIL=1
             fi
