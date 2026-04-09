@@ -31,6 +31,6 @@
 - [ ] `fonts_en.swf` в `src/interface/`, валидный SWF
 - [ ] `translate_en.txt` заполнен, UTF-16LE BOM, формат `$KEY\tValue` (quoted CSV также принимается)
 - [ ] ESM плагин: ESM flag + Localized Strings (0x80), HEDR 0.96, master `Starfield.esm`
-- [ ] `ba2-packer validate dist/` — все 13 проверок + 1 предупреждение (font preloading) проходят
+- [ ] `ba2-packer validate dist/ --source-strings src/strings --source-interface src/interface` — все 13 проверок + 1 предупреждение (font preloading) проходят
 - [ ] Release tag → GitHub Release с zip
 - [ ] Тестирование на PS5
