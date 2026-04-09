@@ -103,8 +103,19 @@ pub fn run(
 
     let options = make_starfield_options();
 
-    // Pack Main BA2 (strings)
+    // Collect all files first, then check
     let string_files = collect_string_files(input_strings)?;
+    let interface_files = collect_interface_files(input_interface)?;
+
+    if string_files.is_empty() && interface_files.is_empty() {
+        bail!(
+            "No artifacts to pack: no string files found in {} and no interface files found in {}",
+            input_strings.display(),
+            input_interface.display()
+        );
+    }
+
+    // Pack Main BA2 (strings)
     if string_files.is_empty() {
         eprintln!(
             "Warning: No string files found in {}",
@@ -122,7 +133,6 @@ pub fn run(
     }
 
     // Pack Interface BA2
-    let interface_files = collect_interface_files(input_interface)?;
     if interface_files.is_empty() {
         eprintln!(
             "Warning: No interface files found in {}",
@@ -298,6 +308,91 @@ mod tests {
         assert!(credits_path.exists());
         let content = fs::read_to_string(&credits_path).unwrap();
         assert!(content.contains("ZoG Forum Team"));
+    }
+
+    #[test]
+    fn test_run_fails_when_no_artifacts() {
+        let strings_dir = TempDir::new().unwrap();
+        let interface_dir = TempDir::new().unwrap();
+        let output_dir = TempDir::new().unwrap();
+
+        // Both directories exist but are empty — no string files, no interface files
+        let result = run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            None,
+        );
+        assert!(
+            result.is_err(),
+            "pack should fail when no artifacts are produced"
+        );
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("No artifacts"),
+            "Error should mention no artifacts, got: {err_msg}"
+        );
+    }
+
+    #[test]
+    fn test_run_succeeds_with_only_string_files() {
+        let strings_dir = TempDir::new().unwrap();
+        let interface_dir = TempDir::new().unwrap();
+        let output_dir = TempDir::new().unwrap();
+
+        fs::write(
+            strings_dir.path().join("starfield_en.STRINGS"),
+            b"\x01\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00test\x00",
+        )
+        .unwrap();
+
+        let result = run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            None,
+        );
+        assert!(result.is_ok(), "pack should succeed with only string files");
+        assert!(output_dir
+            .path()
+            .join("StarfieldRussian - Main.ba2")
+            .exists());
+        assert!(!output_dir
+            .path()
+            .join("StarfieldRussian - Interface.ba2")
+            .exists());
+    }
+
+    #[test]
+    fn test_run_succeeds_with_only_interface_files() {
+        let strings_dir = TempDir::new().unwrap();
+        let interface_dir = TempDir::new().unwrap();
+        let output_dir = TempDir::new().unwrap();
+
+        fs::write(
+            interface_dir.path().join("fontconfig_en.txt"),
+            b"fontlib \"fonts_en\"",
+        )
+        .unwrap();
+
+        let result = run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            None,
+        );
+        assert!(
+            result.is_ok(),
+            "pack should succeed with only interface files"
+        );
+        assert!(output_dir
+            .path()
+            .join("StarfieldRussian - Interface.ba2")
+            .exists());
+        assert!(!output_dir
+            .path()
+            .join("StarfieldRussian - Main.ba2")
+            .exists());
     }
 
     #[test]

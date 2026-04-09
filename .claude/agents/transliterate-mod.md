@@ -104,7 +104,7 @@ Creates `StarfieldRussian - Main.ba2` (strings) and `StarfieldRussian - Interfac
 ### 7. Validate output
 
 ```bash
-cd tools/ba2-packer && cargo run --release -- validate ../../dist
+cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```
 
 All validation checks must pass. Report any failures to the user.

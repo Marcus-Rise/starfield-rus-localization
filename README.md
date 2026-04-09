@@ -104,7 +104,7 @@ cargo run --release -- pack \
   --output-dir ../../dist
 
 # Валидация
-cargo run --release -- validate ../../dist
+cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```
 
 ## CLI инструмент (ba2-packer)
@@ -123,7 +123,7 @@ cargo run --release -- validate ../../dist
 
 ```bash
 ba2-packer pack --input-strings <DIR> --input-interface <DIR> --output-dir <DIR>
-ba2-packer validate <DIST_DIR>
+ba2-packer validate <DIST_DIR> [--source-strings <DIR>] [--source-interface <DIR>]
 ba2-packer rename --input-dir <DIR> --output-dir <DIR>
 ba2-packer extract --input <FILE_OR_DIR> --output-dir <DIR>
 ba2-packer repack --input <FILE_OR_DIR> --output-dir <DIR>
