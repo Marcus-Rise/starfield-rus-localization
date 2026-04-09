@@ -19,6 +19,18 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
 - **Game data**: .STRINGS/.DLSTRINGS/.ILSTRINGS and ESM plugins are created from user's own data. Repository contains only `.gitkeep` placeholders
 - **`rename` subcommand**: Converts only the user's own copy of a reference mod (`_ru` → `_en`)
 
+### PS5 Platform Constraints
+
+> Full technical details: `docs/ARCHITECTURE.md`
+
+1. **BA2 archives only** — PS5 cannot load loose files; all content must be packed into BA2 and delivered via Creations
+2. **No INI modifications** — any INI changes on PS5 cause console hangs; crash logs are sent to Sony and risk hardware ban
+3. **No native Cyrillic** — engine fonts lack Cyrillic glyphs; must inject via `fonts_en.swf` using JPEXS FFDec
+4. **BA2 revert on updates** — game updates reset custom BA2 files; mod must be re-applied after each patch
+5. **Never set PS5 language to Russian** — causes console hang (engine tries to load missing `_ru` resources)
+6. **Creations is the only distribution path** — no sideloading on PS5
+7. **Transliteration as fallback** — PS5 community accepts Cyrillic→Latin transliterated text when font injection is not viable
+
 ### Development Process
 - **TDD**: Tests are written before implementation. `cargo test` must pass at every stage
 - **Linting**: `cargo fmt` + `cargo clippy -D warnings` — mandatory in CI and before commits
@@ -45,6 +57,24 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
    - Verify all docs reference the current set of subcommands
    - Verify examples match current CLI interface (`ba2-packer --help`)
    - Verify agents (`.claude/agents/`) reflect the actual build pipeline
+
+## Anti-patterns (Do NOT)
+
+> Copyright, TDD, and branching anti-patterns are already covered in Rules for Agents above.
+
+**Platform:**
+- No `sResourceStartUpArchiveList` modifications for PS5 — causes hangs
+- No loose file workflows — always pack into BA2
+- No PS5 system language changes in testing guides or documentation
+
+**Code:**
+- No `unwrap()` without a comment explaining why the value is guaranteed — use `anyhow::Context`
+- No new Cargo dependencies without first checking if existing deps cover the need
+- No changes to binary STRINGS/DLSTRINGS/ILSTRINGS serialization without round-trip tests
+- No modifications to `string_table.rs` serialization without format-level tests against fixture files
+
+**Process:**
+- No refactoring unrelated code in feature PRs — keep PRs focused on a single concern
 
 ## Project Structure
 

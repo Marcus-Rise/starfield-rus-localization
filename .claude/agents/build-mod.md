@@ -68,6 +68,13 @@ Execute in order:
 - If cargo build fails, report the error and suggest fixes
 - If validation fails, list which checks failed
 
+## PS5 Constraints
+
+- Final artifacts target Bethesda Creations for PS5 — output MUST be BA2 archives
+- Do NOT suggest INI modifications (e.g., `sResourceStartUpArchiveList`) — causes PS5 hangs
+- BA2 files revert after game updates — warn user to re-apply mod after Starfield patches
+- If `fonts_en.swf` is missing from `src/interface/`, warn that Cyrillic text will not render on PS5
+
 ## Post-Build Documentation Check
 
 After any code changes that add or modify subcommands:
