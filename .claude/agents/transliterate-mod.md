@@ -30,59 +30,67 @@ Execute in order from `tools/ba2-packer/`:
 cd tools/ba2-packer && cargo build --release
 ```
 
-### 2. Extract binary string tables to JSONL
-
-```bash
-cd tools/ba2-packer && cargo run --release -- extract \
-  --input ../../src/strings \
-  --output-dir ../../build/extracted
-```
-
-Converts binary `.STRINGS`/`.DLSTRINGS`/`.ILSTRINGS` files to human-readable JSONL format.
-
-### 3. Transliterate Cyrillic to Latin
-
-```bash
-cd tools/ba2-packer && cargo run --release -- transliterate \
-  --input-dir ../../build/extracted \
-  --output-dir ../../build/transliterated \
-  --credit "Translation Author"
-```
-
-- Converts Cyrillic text to Latin (Привет → Privet) in JSONL string tables and `translate_en.txt`
-- `--credit` is optional — use it when the translation comes from a third party; creates `CREDITS.txt`
-- Copy `translate_en.txt` into the input directory before this step if UI translations should also be transliterated
-
-### 4. Repack JSONL back to binary string tables
-
-```bash
-cd tools/ba2-packer && cargo run --release -- repack \
-  --input ../../build/transliterated \
-  --output-dir ../../build/repacked
-```
-
-Converts transliterated JSONL files back to binary `.STRINGS`/`.DLSTRINGS`/`.ILSTRINGS` format.
-
-### 5. Rename `_ru` to `_en` (conditional)
+### 2. Rename `_ru` to `_en` (conditional)
 
 Only needed if source files have `_ru` suffix. PS5 always loads `_en` files.
 
 ```bash
 cd tools/ba2-packer && cargo run --release -- rename \
-  --input-dir ../../build/repacked \
-  --output-dir ../../src/strings
+  --input-dir ../../src/strings \
+  --output-dir ../../build/renamed
 ```
 
-If files already have `_en` suffix, copy them directly to `src/strings/` instead.
+If files already have `_en` suffix, skip this step.
 
-### 6. Create ESM plugin
+### 3. Transliterate Cyrillic to Latin
+
+The `transliterate` command works directly on **binary** string tables (`.STRINGS`/`.DLSTRINGS`/`.ILSTRINGS`) and `translate_en.txt`. It does NOT accept JSONL.
+
+Prepare the input directory with both string tables and translate file:
+
+```bash
+mkdir -p ../../build/translit-input
+cp ../../build/renamed/* ../../build/translit-input/ 2>/dev/null
+# If step 2 was skipped (files already _en), copy from src/strings/ instead:
+# cp ../../src/strings/*.STRINGS ../../src/strings/*.DLSTRINGS ../../src/strings/*.ILSTRINGS ../../build/translit-input/
+cp ../../src/interface/translate_en.txt ../../build/translit-input/
+```
+
+Then run transliteration:
+
+```bash
+cd tools/ba2-packer && cargo run --release -- transliterate \
+  --input-dir ../../build/translit-input \
+  --output-dir ../../build/transliterated \
+  --credit "Translation Author"
+```
+
+- Converts Cyrillic text to Latin (Привет → Privet) in binary string tables and `translate_en.txt`
+- `--credit` is optional — use it when the translation comes from a third party; creates `CREDITS.txt`
+- The command searches the input directory for `.STRINGS`/`.DLSTRINGS`/`.ILSTRINGS` files and `translate_en.txt`
+
+### 4. Stage transliterated files into `src/`
+
+Copy the transliterated output back into the source directories so that `pack` picks them up:
+
+```bash
+# String tables → src/strings/
+cp ../../build/transliterated/*.STRINGS ../../src/strings/ 2>/dev/null
+cp ../../build/transliterated/*.DLSTRINGS ../../src/strings/ 2>/dev/null
+cp ../../build/transliterated/*.ILSTRINGS ../../src/strings/ 2>/dev/null
+
+# Transliterated translate_en.txt → src/interface/
+cp ../../build/transliterated/translate_en.txt ../../src/interface/
+```
+
+### 5. Create ESM plugin
 
 ```bash
 cd tools/ba2-packer && cargo run --release -- create-esm \
   --output ../../dist/StarfieldRussian.esm
 ```
 
-### 7. Pack BA2 archives
+### 6. Pack BA2 archives
 
 ```bash
 cd tools/ba2-packer && cargo run --release -- pack \
@@ -93,7 +101,7 @@ cd tools/ba2-packer && cargo run --release -- pack \
 
 Creates `StarfieldRussian - Main.ba2` (strings) and `StarfieldRussian - Interface.ba2` (UI/fonts).
 
-### 8. Validate output
+### 7. Validate output
 
 ```bash
 cd tools/ba2-packer && cargo run --release -- validate ../../dist
@@ -107,9 +115,9 @@ All validation checks must pass. Report any failures to the user.
 - Source strings: `src/strings/`
 - Source interface: `src/interface/`
 - Build directory (intermediate): `build/`
-- Extracted JSONL: `build/extracted/`
-- Transliterated JSONL: `build/transliterated/`
-- Repacked binaries: `build/repacked/`
+- Renamed binaries: `build/renamed/`
+- Transliteration input (staging): `build/translit-input/`
+- Transliterated output: `build/transliterated/`
 - Output directory: `dist/`
 - Main archive: `dist/StarfieldRussian - Main.ba2`
 - Interface archive: `dist/StarfieldRussian - Interface.ba2`
@@ -118,10 +126,9 @@ All validation checks must pass. Report any failures to the user.
 ## Error Handling
 
 - If `src/strings/` contains only `.gitkeep`: stop and request source files
-- If `translate_en.txt` is missing from `src/interface/`: warn that UI translations will not be included
+- If `translate_en.txt` is missing from `src/interface/`: warn that UI translations will not be transliterated
 - If cargo build fails: report the error and suggest `cargo clean` then retry
-- If extract fails: check that input files are valid binary string tables
-- If transliterate produces empty output: verify input JSONL files contain Cyrillic text
+- If transliterate reports `No files were found to transliterate`: verify that binary string tables exist in the input directory (not JSONL)
 - If validation fails: list which checks failed and suggest fixes
 
 ## PS5 Constraints
