@@ -340,11 +340,16 @@ fn warn_font_preloading(dist_dir: &Path) -> ValidationResult {
     }
 }
 
-fn warn_missing_credits(dist_dir: &Path) -> ValidationResult {
+fn check_credits(dist_dir: &Path, require: bool) -> ValidationResult {
     let check = "Attribution (CREDITS.txt)";
     let credits_path = dist_dir.join("CREDITS.txt");
     if credits_path.exists() {
         ValidationResult::pass(check)
+    } else if require {
+        ValidationResult::fail(
+            check,
+            "No CREDITS.txt found — use --credit flag with pack to attribute translation source",
+        )
     } else {
         ValidationResult::warn(
             check,
@@ -357,6 +362,7 @@ fn collect_checks(
     dist_dir: &Path,
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
+    require_credits: bool,
 ) -> Result<Vec<ValidationResult>> {
     let mut results: Vec<ValidationResult> = Vec::new();
 
@@ -438,7 +444,7 @@ fn collect_checks(
 
     results.push(check_total_size(dist_dir));
     results.push(warn_font_preloading(dist_dir));
-    results.push(warn_missing_credits(dist_dir));
+    results.push(check_credits(dist_dir, require_credits));
     Ok(results)
 }
 
@@ -502,12 +508,13 @@ pub fn run(
     dist_dir: &Path,
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
+    require_credits: bool,
 ) -> Result<()> {
     if !dist_dir.is_dir() {
         anyhow::bail!("Dist directory does not exist: {}", dist_dir.display());
     }
 
-    let results = collect_checks(dist_dir, source_strings, source_interface)?;
+    let results = collect_checks(dist_dir, source_strings, source_interface, require_credits)?;
 
     // Print results
     let mut failed = 0;
@@ -767,7 +774,7 @@ mod tests {
     fn test_missing_ba2_fails() {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
-        let results = collect_checks(dist.path(), None, None).unwrap();
+        let results = collect_checks(dist.path(), None, None, false).unwrap();
         let ba2_fails: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("BA2 present"))
@@ -791,7 +798,7 @@ mod tests {
             fs::write(source.path().join(filename), &data).unwrap();
         }
 
-        let results = collect_checks(dist.path(), Some(source.path()), None).unwrap();
+        let results = collect_checks(dist.path(), Some(source.path()), None, false).unwrap();
         let string_results: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("String file valid"))
@@ -855,7 +862,7 @@ mod tests {
     fn test_warn_missing_credits_no_file() {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
-        let result = warn_missing_credits(dist.path());
+        let result = check_credits(dist.path(), false);
         assert!(result.is_warning());
     }
 
@@ -868,7 +875,31 @@ mod tests {
             "Translation by: Test Author\n",
         )
         .unwrap();
-        let result = warn_missing_credits(dist.path());
+        let result = check_credits(dist.path(), false);
+        assert!(result.is_passed());
+    }
+
+    #[test]
+    fn test_require_credits_no_file_fails() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let result = check_credits(dist.path(), true);
+        assert!(
+            result.is_failed(),
+            "Missing CREDITS.txt should fail when require_credits is true"
+        );
+    }
+
+    #[test]
+    fn test_require_credits_file_present_passes() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        fs::write(
+            dist.path().join("CREDITS.txt"),
+            "Translation by: Test Author\n",
+        )
+        .unwrap();
+        let result = check_credits(dist.path(), true);
         assert!(result.is_passed());
     }
 
