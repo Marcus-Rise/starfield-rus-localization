@@ -16,15 +16,38 @@ Execute in order:
    cd tools/ba2-packer && cargo build --release
    ```
 
-2. **Pack BA2 archives** (only if source files exist):
+2. **Rename _ru to _en** (only if user provides _ru files):
+   ```bash
+   cd tools/ba2-packer && cargo run --release -- rename \
+     --input-dir /path/to/reference/Data \
+     --output-dir ../../build
+   ```
+
+3. **Extract/edit/repack** (optional, if user needs to edit translations):
+   ```bash
+   cd tools/ba2-packer && cargo run --release -- extract \
+     --input ../../build/ --output-dir ../../extracted
+   # User edits JSONL files...
+   cd tools/ba2-packer && cargo run --release -- repack \
+     --input ../../extracted/ --output-dir ../../build
+   ```
+
+4. **Create ESM plugin**:
+   ```bash
+   cd tools/ba2-packer && cargo run --release -- create-esm \
+     --output ../../dist/StarfieldRussian.esm
+   ```
+
+5. **Pack BA2 archives** (only if source files exist):
    ```bash
    cd tools/ba2-packer && cargo run --release -- pack \
      --input-strings ../../src/strings \
      --input-interface ../../src/interface \
-     --output-dir ../../dist
+     --output-dir ../../dist \
+     --credit "Translation Author (if third-party)"
    ```
 
-3. **Validate output** (only if dist/ was produced):
+6. **Validate output** (only if dist/ was produced):
    ```bash
    cd tools/ba2-packer && cargo run --release -- validate ../../dist
    ```
@@ -44,3 +67,10 @@ Execute in order:
 - If `src/strings/` contains only `.gitkeep`, skip packing and report that source files are needed
 - If cargo build fails, report the error and suggest fixes
 - If validation fails, list which checks failed
+
+## Post-Build Documentation Check
+
+After any code changes that add or modify subcommands:
+1. Run `cargo run --release -- --help` and compare output with README.md command table
+2. Verify docs/WORKFLOW.md reflects the actual pipeline
+3. Report any discrepancies to the user

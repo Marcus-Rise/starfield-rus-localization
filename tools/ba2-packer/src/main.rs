@@ -33,6 +33,10 @@ enum Commands {
         /// Output directory for BA2 archives
         #[arg(long)]
         output_dir: PathBuf,
+
+        /// Credit the translation author (creates CREDITS.txt in output directory)
+        #[arg(long)]
+        credit: Option<String>,
     },
 
     /// Validate built mod artifacts in dist directory
@@ -113,7 +117,13 @@ fn main() -> anyhow::Result<()> {
             input_strings,
             input_interface,
             output_dir,
-        } => pack::run(&input_strings, &input_interface, &output_dir),
+            credit,
+        } => pack::run(
+            &input_strings,
+            &input_interface,
+            &output_dir,
+            credit.as_deref(),
+        ),
         Commands::Validate {
             dist_dir,
             source_strings,

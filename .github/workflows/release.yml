@@ -30,23 +30,39 @@ jobs:
         working-directory: tools/ba2-packer
         run: cargo build --release
 
-      - name: Build ESM (Spriggit)
+      - name: Build ESM (Spriggit or create-esm fallback)
         run: |
           dotnet tool install -g Spriggit.CLI
-          spriggit deserialize \
-            --InputPath src/plugin/StarfieldRussian \
-            --OutputPath dist/StarfieldRussian.esm \
-            --GameRelease Starfield
+          mkdir -p dist
+          if [ -d "src/plugin/StarfieldRussian" ] && [ "$(ls -A src/plugin/StarfieldRussian)" != ".gitkeep" ]; then
+            spriggit deserialize \
+              --InputPath src/plugin/StarfieldRussian \
+              --OutputPath dist/StarfieldRussian.esm \
+              --GameRelease Starfield
+          else
+            echo "No Spriggit plugin source found, using create-esm fallback"
+            ./tools/ba2-packer/target/release/ba2-packer create-esm \
+              --output dist/StarfieldRussian.esm
+          fi
 
       - name: Pack BA2 archives
         run: |
-          ./tools/ba2-packer/target/release/ba2-packer pack \
-            --input-strings src/strings \
-            --input-interface src/interface \
-            --output-dir dist
+          if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1; then
+            ./tools/ba2-packer/target/release/ba2-packer pack \
+              --input-strings src/strings \
+              --input-interface src/interface \
+              --output-dir dist
+          else
+            echo "No string table files found, skipping BA2 packing"
+          fi
 
-      - name: Validate
-        run: ./tools/ba2-packer/target/release/ba2-packer validate dist
+      - name: Validate (if artifacts exist)
+        run: |
+          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ]; then
+            ./tools/ba2-packer/target/release/ba2-packer validate dist
+          else
+            echo "No artifacts to validate"
+          fi
 
       - name: Package
         run: |

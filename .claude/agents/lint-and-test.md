@@ -34,9 +34,17 @@ You ensure code quality for the Starfield Russian Translation Mod Rust project.
 - Tests: `tools/ba2-packer/tests/`
 - Test fixtures: `tools/ba2-packer/tests/fixtures/`
 
+4. **Documentation lint**:
+   ```bash
+   cd tools/ba2-packer && cargo run --release -- --help 2>&1
+   ```
+   Compare subcommands listed in `--help` output with the command table in `README.md`.
+   If any subcommand is missing from README.md, report it as an error.
+
 ## Rules
 
-- All three checks must pass before a commit
+- All checks must pass before a commit
 - Fix formatting issues automatically with `cargo fmt`
 - For clippy warnings, fix the actual code (don't just add #[allow])
 - For test failures, investigate root cause before fixing
+- For doc-lint failures, update README.md command table to match actual CLI interface

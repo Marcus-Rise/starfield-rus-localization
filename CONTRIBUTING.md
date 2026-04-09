@@ -35,8 +35,18 @@
 1. Подготовьте строковые таблицы (12 файлов: 4 плагина × 3 типа)
 2. Убедитесь что файлы `_en` (не `_ru`) — PS5 загружает только `_en`
 3. Используйте `ba2-packer rename` для конвертации `_ru` → `_en`
-4. Проверьте кодировку `translate_en.txt` — UTF-16LE с BOM
-5. Запустите `ba2-packer validate dist/` для проверки
+4. Для редактирования перевода: `ba2-packer extract` → правка JSONL → `ba2-packer repack`
+5. Проверьте кодировку `translate_en.txt` — UTF-16LE с BOM
+6. Создайте ESM-плагин: `ba2-packer create-esm --output dist/StarfieldRussian.esm`
+7. Упакуйте архивы: `ba2-packer pack --input-strings ... --input-interface ... --output-dir dist`
+8. Запустите `ba2-packer validate dist/` для проверки
+
+### Авторские права
+
+При использовании чужого перевода (например, с Nexus Mods):
+- Получите разрешение автора на использование
+- Укажите авторство: `ba2-packer pack ... --credit "Автор перевода"`
+- Не размещайте текст чужого перевода в репозитории
 
 ## Шрифты
 

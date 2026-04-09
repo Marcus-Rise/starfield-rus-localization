@@ -26,6 +26,34 @@ jobs:
         working-directory: tools/ba2-packer
         run: cargo test
 
+  check-docs:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build CLI
+        working-directory: tools/ba2-packer
+        run: cargo build --release
+
+      - name: Verify CLI subcommands documented in README
+        run: |
+          HELP=$(./tools/ba2-packer/target/release/ba2-packer --help 2>&1)
+          CMDS=$(echo "$HELP" | sed -n '/Commands:/,/Options:/p' | grep -E '^\s+\w' | awk '{print $1}')
+          FAIL=0
+          for cmd in $CMDS; do
+            if ! grep -q "$cmd" README.md; then
+              echo "ERROR: subcommand '$cmd' not documented in README.md"
+              FAIL=1
+            fi
+          done
+          if [ $FAIL -eq 1 ]; then
+            exit 1
+          fi
+          echo "All subcommands documented in README.md"
+
   check-sources:
     name: Check Source Files
     runs-on: ubuntu-latest

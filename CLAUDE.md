@@ -11,7 +11,7 @@ Free Creations mod that provides Russian localization tools for Starfield on Pla
 
 ## Key Rules
 
-- **Rust only** — single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`
+- **Rust only** — single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`
 - **No proprietary content** — no copyrighted fonts, no third-party translations
 - **TDD** — tests first, `cargo test` must pass at every stage
 - **Linting** — `cargo fmt` + `cargo clippy -D warnings` mandatory

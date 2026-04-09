@@ -75,7 +75,12 @@ fn collect_interface_files(input_interface: &Path) -> Result<Vec<(String, Vec<u8
     Ok(files)
 }
 
-pub fn run(input_strings: &Path, input_interface: &Path, output_dir: &Path) -> Result<()> {
+pub fn run(
+    input_strings: &Path,
+    input_interface: &Path,
+    output_dir: &Path,
+    credit: Option<&str>,
+) -> Result<()> {
     if !input_strings.is_dir() {
         bail!(
             "Input strings directory does not exist: {}",
@@ -132,6 +137,15 @@ pub fn run(input_strings: &Path, input_interface: &Path, output_dir: &Path) -> R
             .write(&mut output, &options)
             .with_context(|| format!("Failed to write {}", output_path.display()))?;
         println!("Created: {}", output_path.display());
+    }
+
+    // Generate CREDITS.txt if credit is provided
+    if let Some(author) = credit {
+        let credits_path = output_dir.join("CREDITS.txt");
+        let content = format!("Translation by: {author}\n");
+        fs::write(&credits_path, content)
+            .with_context(|| format!("Failed to write {}", credits_path.display()))?;
+        println!("Created: {}", credits_path.display());
     }
 
     Ok(())
@@ -208,6 +222,7 @@ mod tests {
             Path::new("/nonexistent/strings"),
             Path::new("/nonexistent/interface"),
             Path::new("/tmp/output"),
+            None,
         );
         assert!(result.is_err());
     }
@@ -230,7 +245,13 @@ mod tests {
         )
         .unwrap();
 
-        run(strings_dir.path(), interface_dir.path(), output_dir.path()).unwrap();
+        run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            None,
+        )
+        .unwrap();
 
         assert!(output_dir
             .path()
@@ -240,5 +261,64 @@ mod tests {
             .path()
             .join("StarfieldRussian - Interface.ba2")
             .exists());
+    }
+
+    #[test]
+    fn test_run_with_credit_creates_credits_txt() {
+        let strings_dir = TempDir::new().unwrap();
+        let interface_dir = TempDir::new().unwrap();
+        let output_dir = TempDir::new().unwrap();
+
+        fs::write(
+            strings_dir.path().join("starfield_en.STRINGS"),
+            b"\x01\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00test\x00",
+        )
+        .unwrap();
+        fs::write(
+            interface_dir.path().join("fontconfig_en.txt"),
+            b"fontlib \"fonts_en\"",
+        )
+        .unwrap();
+
+        run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            Some("ZoG Forum Team"),
+        )
+        .unwrap();
+
+        let credits_path = output_dir.path().join("CREDITS.txt");
+        assert!(credits_path.exists());
+        let content = fs::read_to_string(&credits_path).unwrap();
+        assert!(content.contains("ZoG Forum Team"));
+    }
+
+    #[test]
+    fn test_run_without_credit_no_credits_txt() {
+        let strings_dir = TempDir::new().unwrap();
+        let interface_dir = TempDir::new().unwrap();
+        let output_dir = TempDir::new().unwrap();
+
+        fs::write(
+            strings_dir.path().join("starfield_en.STRINGS"),
+            b"\x01\x00\x00\x00\x05\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00test\x00",
+        )
+        .unwrap();
+        fs::write(
+            interface_dir.path().join("fontconfig_en.txt"),
+            b"fontlib \"fonts_en\"",
+        )
+        .unwrap();
+
+        run(
+            strings_dir.path(),
+            interface_dir.path(),
+            output_dir.path(),
+            None,
+        )
+        .unwrap();
+
+        assert!(!output_dir.path().join("CREDITS.txt").exists());
     }
 }
