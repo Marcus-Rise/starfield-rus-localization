@@ -62,16 +62,22 @@ jobs:
             echo "No string table or interface files found, skipping BA2 packing"
           fi
 
-      - name: Validate
+      - name: Check content-ready
+        id: content
         run: |
           if [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist \
-              --source-strings src/strings \
-              --source-interface src/interface \
-              --require-credits
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No BA2 archives found, skipping full validation (tooling-only mode)"
+            echo "::error::Release requires BA2 archives (translation content). Repo is still in tooling-only state."
+            exit 1
           fi
+
+      - name: Validate
+        run: |
+          ./tools/ba2-packer/target/release/ba2-packer validate dist \
+            --source-strings src/strings \
+            --source-interface src/interface \
+            --require-credits
 
       - name: Package
         run: |
