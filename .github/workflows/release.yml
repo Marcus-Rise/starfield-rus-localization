@@ -51,10 +51,15 @@ jobs:
              ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
              [ -f src/interface/fonts_en.swf ]; then
+            CREDIT_FLAG=""
+            if [ -n "${{ vars.TRANSLATION_CREDIT }}" ]; then
+              CREDIT_FLAG="--credit ${{ vars.TRANSLATION_CREDIT }}"
+            fi
             ./tools/ba2-packer/target/release/ba2-packer pack \
               --input-strings src/strings \
               --input-interface src/interface \
-              --output-dir dist
+              --output-dir dist \
+              $CREDIT_FLAG
           else
             echo "No string table or interface files found, skipping BA2 packing"
           fi
