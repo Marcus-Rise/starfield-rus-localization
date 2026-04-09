@@ -84,12 +84,15 @@ jobs:
           fi
 
       - name: Validate
+        env:
+          TRANSLATION_CREDIT: ${{ vars.TRANSLATION_CREDIT }}
         run: |
           if [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist \
-              --source-strings src/strings \
-              --source-interface src/interface \
-              --require-credits
+            VALIDATE_ARGS=(dist --source-strings src/strings --source-interface src/interface)
+            if [ -n "$TRANSLATION_CREDIT" ]; then
+              VALIDATE_ARGS+=(--require-credits)
+            fi
+            ./tools/ba2-packer/target/release/ba2-packer validate "${VALIDATE_ARGS[@]}"
           else
             echo "No BA2 archives found, skipping full validation (tooling-only mode)"
           fi
