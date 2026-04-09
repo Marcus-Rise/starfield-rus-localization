@@ -4,6 +4,7 @@ mod pack;
 mod rename;
 mod repack;
 mod string_table;
+mod transliterate;
 mod validate;
 
 use clap::{Parser, Subcommand};
@@ -87,6 +88,21 @@ enum Commands {
         #[arg(long)]
         output_dir: PathBuf,
     },
+
+    /// Transliterate Cyrillic text to Latin in string tables and translate files
+    Transliterate {
+        /// Input directory with string table files and/or `translate_en.txt`
+        #[arg(long)]
+        input_dir: PathBuf,
+
+        /// Output directory for transliterated files
+        #[arg(long)]
+        output_dir: PathBuf,
+
+        /// Credit the original translation author (creates CREDITS.txt)
+        #[arg(long)]
+        credit: Option<String>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -114,5 +130,10 @@ fn main() -> anyhow::Result<()> {
             input_dir,
             output_dir,
         } => rename::run(&input_dir, &output_dir),
+        Commands::Transliterate {
+            input_dir,
+            output_dir,
+            credit,
+        } => transliterate::run(&input_dir, &output_dir, credit.as_deref()),
     }
 }

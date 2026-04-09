@@ -17,7 +17,8 @@ fn test_help() {
         .stdout(predicate::str::contains("validate"))
         .stdout(predicate::str::contains("rename"))
         .stdout(predicate::str::contains("extract"))
-        .stdout(predicate::str::contains("repack"));
+        .stdout(predicate::str::contains("repack"))
+        .stdout(predicate::str::contains("transliterate"));
 }
 
 #[test]
@@ -329,4 +330,104 @@ fn test_extract_repack_round_trip_cli() {
     // Compare bytes
     let repacked = fs::read(repacked_dir.path().join("data_en.STRINGS")).unwrap();
     assert_eq!(binary, repacked, "Round-trip must produce identical bytes");
+}
+
+// --- Transliterate ---
+
+#[test]
+fn test_transliterate_help() {
+    cmd()
+        .args(["transliterate", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--input-dir"))
+        .stdout(predicate::str::contains("--output-dir"))
+        .stdout(predicate::str::contains("--credit"));
+}
+
+#[test]
+fn test_transliterate_nonexistent_input() {
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            "/nonexistent/path",
+            "--output-dir",
+            "/tmp/out",
+        ])
+        .assert()
+        .failure();
+}
+
+#[test]
+fn test_transliterate_with_string_files() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    // Create a .STRINGS file with Cyrillic text "Привет"
+    // Binary: count=1, data_size=len("Привет\0" in UTF-8)
+    let text_bytes = "Привет".as_bytes();
+    let data_size = text_bytes.len() + 1; // +1 for null terminator
+    let mut binary: Vec<u8> = Vec::new();
+    binary.extend_from_slice(&1u32.to_le_bytes()); // count = 1
+    binary.extend_from_slice(&(data_size as u32).to_le_bytes());
+    binary.extend_from_slice(&1u32.to_le_bytes()); // id = 1
+    binary.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
+    binary.extend_from_slice(text_bytes);
+    binary.push(0); // null terminator
+
+    fs::write(input.path().join("test_en.STRINGS"), &binary).unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    // Verify output file exists and contains transliterated text
+    let out_path = output.path().join("test_en.STRINGS");
+    assert!(out_path.exists());
+
+    // No CREDITS.txt without --credit
+    assert!(!output.path().join("CREDITS.txt").exists());
+}
+
+#[test]
+fn test_transliterate_with_credit() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    // Minimal .STRINGS binary
+    let binary: Vec<u8> = vec![
+        1, 0, 0, 0, // count = 1
+        2, 0, 0, 0, // data_size = 2
+        1, 0, 0, 0, // id = 1
+        0, 0, 0, 0, // offset = 0
+        b'a', 0, // "a\0"
+    ];
+    fs::write(input.path().join("test_en.STRINGS"), &binary).unwrap();
+
+    cmd()
+        .args([
+            "transliterate",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+            "--credit",
+            "TestAuthor",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("WARNING"))
+        .stdout(predicate::str::contains("TestAuthor"));
+
+    assert!(output.path().join("CREDITS.txt").exists());
+    let credits = fs::read_to_string(output.path().join("CREDITS.txt")).unwrap();
+    assert!(credits.contains("TestAuthor"));
 }
