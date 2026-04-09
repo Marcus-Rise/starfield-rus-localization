@@ -44,7 +44,7 @@ The user built artifacts locally via `build-mod` or `transliterate-mod` agent.
    - `StarfieldRussian - Interface.ba2`
 5. **Validation passed**:
    ```bash
-   cd tools/ba2-packer && cargo run --release -- validate ../../dist
+   cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
    ```
 
 If `dist/` is empty or missing files, direct the user to the `build-mod` or `transliterate-mod` agent first.

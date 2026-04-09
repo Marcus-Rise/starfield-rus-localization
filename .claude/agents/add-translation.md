@@ -40,5 +40,5 @@ You help users add translation content to the Starfield Russian Translation Mod.
 1. Ask user what files they want to add
 2. Verify file format and encoding
 3. Place files in correct directories
-4. Run validation: `cd tools/ba2-packer && cargo run -- validate ../../dist`
+4. Run validation: `cd tools/ba2-packer && cargo run -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface`
 5. Report results

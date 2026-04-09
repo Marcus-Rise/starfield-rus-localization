@@ -25,7 +25,7 @@ ls -lh dist/StarfieldRussian.esm "dist/StarfieldRussian - Main.ba2" "dist/Starfi
 ### 3. Run validation
 
 ```bash
-cd tools/ba2-packer && cargo build --release && cargo run --release -- validate ../../dist
+cd tools/ba2-packer && cargo build --release && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```
 
 All checks must pass. Report any failures.

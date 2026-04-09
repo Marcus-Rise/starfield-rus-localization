@@ -49,7 +49,7 @@ Execute in order:
 
 6. **Validate output** (only if dist/ was produced):
    ```bash
-   cd tools/ba2-packer && cargo run --release -- validate ../../dist
+   cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
    ```
 
 ## Paths
