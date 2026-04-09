@@ -51,6 +51,7 @@ jobs:
              ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
              ls src/interface/fonts_en.swf 1>/dev/null 2>&1 || \
+             ls src/interface/fontconfig_en.txt 1>/dev/null 2>&1 || \
              ls src/interface/translate_en.txt 1>/dev/null 2>&1; then
             ./tools/ba2-packer/target/release/ba2-packer pack \
               --input-strings src/strings \
