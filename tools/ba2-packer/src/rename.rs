@@ -2,6 +2,8 @@ use anyhow::{bail, Context, Result};
 use std::fs;
 use std::path::Path;
 
+const FONTCONFIG_SRC: &str = "fontconfig_ru.txt";
+
 const RENAME_MAP: &[(&str, &str)] = &[
     // String tables: starfield
     ("starfield_ru.STRINGS", "starfield_en.STRINGS"),
@@ -33,6 +35,27 @@ const RENAME_MAP: &[(&str, &str)] = &[
     ("fontconfig_ru.txt", "fontconfig_en.txt"),
     ("translate_ru.txt", "translate_en.txt"),
 ];
+
+/// Copy or transform a single file from src to dst.
+/// For fontconfig, rewrites `"fonts_ru"` → `"fonts_en"` inside the content.
+fn copy_file(src_path: &Path, dst_path: &Path, src_name: &str) -> Result<()> {
+    if src_name == FONTCONFIG_SRC {
+        let content = fs::read_to_string(src_path)
+            .with_context(|| format!("Failed to read {}", src_path.display()))?;
+        let rewritten = content.replace("\"fonts_ru\"", "\"fonts_en\"");
+        fs::write(dst_path, rewritten)
+            .with_context(|| format!("Failed to write {}", dst_path.display()))?;
+    } else {
+        fs::copy(src_path, dst_path).with_context(|| {
+            format!(
+                "Failed to copy {} -> {}",
+                src_path.display(),
+                dst_path.display()
+            )
+        })?;
+    }
+    Ok(())
+}
 
 pub fn run(input_dir: &Path, output_dir: &Path) -> Result<()> {
     if !input_dir.is_dir() {
@@ -66,13 +89,7 @@ pub fn run(input_dir: &Path, output_dir: &Path) -> Result<()> {
             if let Some(alt_path) = alt_found {
                 found += 1;
                 let dst_path = output_dir.join(dst_name);
-                fs::copy(alt_path, &dst_path).with_context(|| {
-                    format!(
-                        "Failed to copy {} -> {}",
-                        alt_path.display(),
-                        dst_path.display()
-                    )
-                })?;
+                copy_file(alt_path, &dst_path, src_name)?;
                 println!("{} -> {}", alt_path.display(), dst_name);
                 copied += 1;
             } else {
@@ -83,13 +100,7 @@ pub fn run(input_dir: &Path, output_dir: &Path) -> Result<()> {
 
         found += 1;
         let dst_path = output_dir.join(dst_name);
-        fs::copy(&src_path, &dst_path).with_context(|| {
-            format!(
-                "Failed to copy {} -> {}",
-                src_path.display(),
-                dst_path.display()
-            )
-        })?;
+        copy_file(&src_path, &dst_path, src_name)?;
         println!("{src_name} -> {dst_name}");
         copied += 1;
     }
@@ -172,5 +183,33 @@ mod tests {
         assert!(result.is_ok());
 
         assert!(output.path().join("starfield_en.STRINGS").exists());
+    }
+
+    #[test]
+    fn test_fontconfig_content_rewritten() {
+        let input = TempDir::new().unwrap();
+        let output = TempDir::new().unwrap();
+
+        // Create fontconfig_ru.txt with fontlib "fonts_ru"
+        fs::write(
+            input.path().join("fontconfig_ru.txt"),
+            b"fontlib \"fonts_ru\"\nmap \"$MAIN_Font\" = \"RF_35_M\" Normal",
+        )
+        .unwrap();
+
+        let result = run(input.path(), output.path());
+        assert!(result.is_ok());
+
+        let content = fs::read_to_string(output.path().join("fontconfig_en.txt")).unwrap();
+        assert!(
+            content.contains("fontlib \"fonts_en\""),
+            "fontconfig should reference fonts_en, got: {content}"
+        );
+        assert!(
+            !content.contains("fontlib \"fonts_ru\""),
+            "fontconfig should not reference fonts_ru"
+        );
+        // Other content preserved
+        assert!(content.contains("map \"$MAIN_Font\" = \"RF_35_M\" Normal"));
     }
 }
