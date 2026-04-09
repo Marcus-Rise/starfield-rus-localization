@@ -129,6 +129,12 @@ pub fn run(
             input_interface.display()
         );
     } else {
+        for expected in INTERFACE_FILES {
+            let archive_path = format!("Interface/{expected}");
+            if !interface_files.iter().any(|(p, _)| p == &archive_path) {
+                eprintln!("Warning: Missing interface file: {expected}");
+            }
+        }
         let archive = pack_files(interface_files);
         let output_path = output_dir.join(format!("{MOD_NAME} - Interface.ba2"));
         let mut output = fs::File::create(&output_path)

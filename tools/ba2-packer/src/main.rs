@@ -51,6 +51,10 @@ enum Commands {
         /// Path to directory with source interface files (optional, falls back to dist/Interface/)
         #[arg(long)]
         source_interface: Option<PathBuf>,
+
+        /// Require CREDITS.txt (fail instead of warn if missing)
+        #[arg(long)]
+        require_credits: bool,
     },
 
     /// Extract binary string tables to human-readable JSONL format
@@ -128,10 +132,12 @@ fn main() -> anyhow::Result<()> {
             dist_dir,
             source_strings,
             source_interface,
+            require_credits,
         } => validate::run(
             &dist_dir,
             source_strings.as_deref(),
             source_interface.as_deref(),
+            require_credits,
         ),
         Commands::Extract { input, output_dir } => extract::run(&input, &output_dir),
         Commands::Repack { input, output_dir } => repack::run(&input, &output_dir),

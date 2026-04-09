@@ -46,25 +46,29 @@ jobs:
           fi
 
       - name: Pack BA2 archives
+        env:
+          TRANSLATION_CREDIT: ${{ vars.TRANSLATION_CREDIT }}
         run: |
           if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
-             ls src/interface/fonts_en.swf 1>/dev/null 2>&1 || \
-             ls src/interface/fontconfig_en.txt 1>/dev/null 2>&1 || \
-             ls src/interface/translate_en.txt 1>/dev/null 2>&1; then
-            ./tools/ba2-packer/target/release/ba2-packer pack \
-              --input-strings src/strings \
-              --input-interface src/interface \
-              --output-dir dist
+             [ -f src/interface/fonts_en.swf ]; then
+            PACK_ARGS=(--input-strings src/strings --input-interface src/interface --output-dir dist)
+            if [ -n "$TRANSLATION_CREDIT" ]; then
+              PACK_ARGS+=(--credit "$TRANSLATION_CREDIT")
+            fi
+            ./tools/ba2-packer/target/release/ba2-packer pack "${PACK_ARGS[@]}"
           else
             echo "No string table or interface files found, skipping BA2 packing"
           fi
 
       - name: Validate (if artifacts exist)
         run: |
-          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist
+          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
+            ./tools/ba2-packer/target/release/ba2-packer validate dist \
+              --source-strings src/strings \
+              --source-interface src/interface \
+              --require-credits
           else
             echo "No artifacts to validate"
           fi

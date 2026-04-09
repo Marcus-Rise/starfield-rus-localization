@@ -1,3 +1,4 @@
+use crate::string_table::{parse_string_table, StringTableType};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -156,31 +157,19 @@ fn check_master_reference(esm_data: &[u8]) -> ValidationResult {
     }
 }
 
-/// Check string file header parses correctly
+/// Check string file fully parses (header, directory, offsets, payload, UTF-8)
 fn check_string_file(data: &[u8], filename: &str) -> ValidationResult {
     let check_name = format!("String file valid: {filename}");
-    if data.len() < 8 {
-        return ValidationResult::fail(&check_name, "File too small for header (need 8 bytes)");
+
+    let ext = filename.rsplit('.').next().unwrap_or("");
+    let Ok(table_type) = StringTableType::from_extension(ext) else {
+        return ValidationResult::fail(&check_name, &format!("Unknown extension: {ext}"));
+    };
+
+    match parse_string_table(data, table_type) {
+        Ok(entries) => ValidationResult::pass(&format!("{check_name} ({} entries)", entries.len())),
+        Err(e) => ValidationResult::fail(&check_name, &format!("{e}")),
     }
-
-    let count = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
-    let _data_size = u32::from_le_bytes([data[4], data[5], data[6], data[7]]) as usize;
-
-    // Directory: count * 8 bytes (id: u32 + offset: u32)
-    let directory_size = count * 8;
-    let expected_min = 8 + directory_size;
-
-    if data.len() < expected_min {
-        return ValidationResult::fail(
-            &check_name,
-            &format!(
-                "File too small: has {} bytes, need at least {expected_min} for {count} entries",
-                data.len()
-            ),
-        );
-    }
-
-    ValidationResult::pass(&check_name)
 }
 
 /// Check `translate_en.txt` is UTF-16LE with BOM
@@ -351,11 +340,16 @@ fn warn_font_preloading(dist_dir: &Path) -> ValidationResult {
     }
 }
 
-fn warn_missing_credits(dist_dir: &Path) -> ValidationResult {
+fn check_credits(dist_dir: &Path, require: bool) -> ValidationResult {
     let check = "Attribution (CREDITS.txt)";
     let credits_path = dist_dir.join("CREDITS.txt");
     if credits_path.exists() {
         ValidationResult::pass(check)
+    } else if require {
+        ValidationResult::fail(
+            check,
+            "No CREDITS.txt found — use --credit flag with pack to attribute translation source",
+        )
     } else {
         ValidationResult::warn(
             check,
@@ -368,6 +362,7 @@ fn collect_checks(
     dist_dir: &Path,
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
+    require_credits: bool,
 ) -> Result<Vec<ValidationResult>> {
     let mut results: Vec<ValidationResult> = Vec::new();
 
@@ -423,7 +418,7 @@ fn collect_checks(
     }
     let interface_dir_owned = dist_dir.join("Interface");
     let interface_dir = source_interface.unwrap_or(&interface_dir_owned);
-    collect_interface_checks(&mut results, dist_dir, interface_dir)?;
+    collect_interface_checks(&mut results, &interface_dir_owned, interface_dir)?;
 
     // BA2 archives (required)
     for (name, path) in [
@@ -449,33 +444,49 @@ fn collect_checks(
 
     results.push(check_total_size(dist_dir));
     results.push(warn_font_preloading(dist_dir));
-    results.push(warn_missing_credits(dist_dir));
+    results.push(check_credits(dist_dir, require_credits));
     Ok(results)
 }
 
 fn collect_interface_checks(
     results: &mut Vec<ValidationResult>,
-    dist_dir: &Path,
+    dist_interface_dir: &Path,
     interface_dir: &Path,
 ) -> Result<()> {
     // translate_en.txt
-    let translate_data = read_with_fallback(interface_dir, dist_dir, "translate_en.txt")?;
+    let translate_data = read_with_fallback(interface_dir, dist_interface_dir, "translate_en.txt")?;
     if let Some(data) = translate_data {
         results.push(check_translate_encoding(&data));
         results.push(check_translate_format(&data));
+    } else {
+        results.push(ValidationResult::fail(
+            "Interface file present: translate_en.txt",
+            "File not found",
+        ));
     }
 
     // fontconfig_en.txt
-    let fontconfig_data = read_with_fallback(interface_dir, dist_dir, "fontconfig_en.txt")?;
+    let fontconfig_data =
+        read_with_fallback(interface_dir, dist_interface_dir, "fontconfig_en.txt")?;
     if let Some(data) = fontconfig_data {
         results.push(check_fontconfig_fontlib(&data));
         results.push(check_fontconfig_cyrillic(&data));
+    } else {
+        results.push(ValidationResult::fail(
+            "Interface file present: fontconfig_en.txt",
+            "File not found",
+        ));
     }
 
     // fonts_en.swf
-    let swf_data = read_with_fallback(interface_dir, dist_dir, "fonts_en.swf")?;
+    let swf_data = read_with_fallback(interface_dir, dist_interface_dir, "fonts_en.swf")?;
     if let Some(data) = swf_data {
         results.push(check_swf_magic(&data));
+    } else {
+        results.push(ValidationResult::fail(
+            "Interface file present: fonts_en.swf",
+            "File not found",
+        ));
     }
 
     Ok(())
@@ -497,12 +508,13 @@ pub fn run(
     dist_dir: &Path,
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
+    require_credits: bool,
 ) -> Result<()> {
     if !dist_dir.is_dir() {
         anyhow::bail!("Dist directory does not exist: {}", dist_dir.display());
     }
 
-    let results = collect_checks(dist_dir, source_strings, source_interface)?;
+    let results = collect_checks(dist_dir, source_strings, source_interface, require_credits)?;
 
     // Print results
     let mut failed = 0;
@@ -762,7 +774,7 @@ mod tests {
     fn test_missing_ba2_fails() {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
-        let results = collect_checks(dist.path(), None, None).unwrap();
+        let results = collect_checks(dist.path(), None, None, false).unwrap();
         let ba2_fails: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("BA2 present"))
@@ -786,7 +798,7 @@ mod tests {
             fs::write(source.path().join(filename), &data).unwrap();
         }
 
-        let results = collect_checks(dist.path(), Some(source.path()), None).unwrap();
+        let results = collect_checks(dist.path(), Some(source.path()), None, false).unwrap();
         let string_results: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("String file valid"))
@@ -850,7 +862,7 @@ mod tests {
     fn test_warn_missing_credits_no_file() {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
-        let result = warn_missing_credits(dist.path());
+        let result = check_credits(dist.path(), false);
         assert!(result.is_warning());
     }
 
@@ -863,7 +875,126 @@ mod tests {
             "Translation by: Test Author\n",
         )
         .unwrap();
-        let result = warn_missing_credits(dist.path());
+        let result = check_credits(dist.path(), false);
         assert!(result.is_passed());
+    }
+
+    #[test]
+    fn test_require_credits_no_file_fails() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let result = check_credits(dist.path(), true);
+        assert!(
+            result.is_failed(),
+            "Missing CREDITS.txt should fail when require_credits is true"
+        );
+    }
+
+    #[test]
+    fn test_require_credits_file_present_passes() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        fs::write(
+            dist.path().join("CREDITS.txt"),
+            "Translation by: Test Author\n",
+        )
+        .unwrap();
+        let result = check_credits(dist.path(), true);
+        assert!(result.is_passed());
+    }
+
+    #[test]
+    fn test_missing_interface_files_fail() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        // Provide only fontconfig_en.txt, missing fonts_en.swf and translate_en.txt
+        fs::write(
+            interface.path().join("fontconfig_en.txt"),
+            "fontlib \"fonts_en\"\nvalidNameChars \"АБВЯабвя\"",
+        )
+        .unwrap();
+
+        let mut results = Vec::new();
+        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert!(
+            fails.len() >= 2,
+            "Should fail for missing translate_en.txt and fonts_en.swf, got {} fails",
+            fails.len()
+        );
+    }
+
+    #[test]
+    fn test_all_interface_files_present_no_fail() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        // translate_en.txt: UTF-16LE with BOM, $KEY\tValue format
+        let mut translate = vec![0xFF, 0xFE];
+        for c in "$KEY\tValue\n".encode_utf16() {
+            translate.extend_from_slice(&c.to_le_bytes());
+        }
+        fs::write(interface.path().join("translate_en.txt"), &translate).unwrap();
+
+        // fontconfig_en.txt
+        fs::write(
+            interface.path().join("fontconfig_en.txt"),
+            "fontlib \"fonts_en\"\nvalidNameChars \"АБВЯабвя\"",
+        )
+        .unwrap();
+
+        // fonts_en.swf (valid SWF magic)
+        fs::write(
+            interface.path().join("fonts_en.swf"),
+            b"FWS\x09\x00\x00\x00\x00",
+        )
+        .unwrap();
+
+        let mut results = Vec::new();
+        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert!(
+            fails.is_empty(),
+            "No interface checks should fail when all files present, got: {:?}",
+            fails.iter().map(|r| &r.check).collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn test_no_interface_files_three_fails() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        let mut results = Vec::new();
+        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert_eq!(
+            fails.len(),
+            3,
+            "Should fail for all 3 missing interface files, got {} fails",
+            fails.len()
+        );
+    }
+
+    #[test]
+    fn test_check_string_file_bad_offset_fails() {
+        // Header says count=1, directory has offset pointing beyond file
+        let mut data = Vec::new();
+        data.extend_from_slice(&1u32.to_le_bytes()); // count = 1
+        data.extend_from_slice(&0u32.to_le_bytes()); // data_size = 0
+        data.extend_from_slice(&1u32.to_le_bytes()); // id = 1
+        data.extend_from_slice(&255u32.to_le_bytes()); // offset = 255 (way beyond)
+        let result = check_string_file(&data, "test.STRINGS");
+        assert!(
+            result.is_failed(),
+            "String file with out-of-bounds offset should fail validation"
+        );
     }
 }

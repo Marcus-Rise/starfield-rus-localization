@@ -25,10 +25,12 @@ Starfield на PS5 не поддерживает русский язык. Дви
 
 ## Установка
 
-### PS5 (через Bethesda Creations)
+### PS5 (через Bethesda Creations) — экспериментально
 1. В главном меню Starfield → **Creations**
 2. Найдите мод «Starfield Russian Translation»
 3. Скачайте и активируйте
+
+> ⚠️ Загрузка кириллических шрифтов на PS5 не проверена. Подробности в `docs/ARCHITECTURE.md`.
 
 ### PC (Nexus Mods)
 1. Скачайте zip с [GitHub Releases](../../releases/latest)
