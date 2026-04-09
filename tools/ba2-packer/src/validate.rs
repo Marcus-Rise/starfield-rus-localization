@@ -307,7 +307,11 @@ fn check_total_size(dist_dir: &Path) -> ValidationResult {
     }
 }
 
-fn collect_checks(dist_dir: &Path) -> Result<Vec<ValidationResult>> {
+fn collect_checks(
+    dist_dir: &Path,
+    source_strings: Option<&Path>,
+    source_interface: Option<&Path>,
+) -> Result<Vec<ValidationResult>> {
     let mut results: Vec<ValidationResult> = Vec::new();
 
     // ESM validation
@@ -325,8 +329,15 @@ fn collect_checks(dist_dir: &Path) -> Result<Vec<ValidationResult>> {
         ));
     }
 
-    // String files check (inside BA2 or loose)
-    let strings_dir = dist_dir.join("Strings");
+    // String files check: prefer source dir, fallback to dist/Strings/
+    if let Some(p) = source_strings {
+        if !p.is_dir() {
+            anyhow::bail!("Source strings directory does not exist: {}", p.display());
+        }
+    }
+    let strings_dir_owned = dist_dir.join("Strings");
+    let strings_dir = source_strings.unwrap_or(&strings_dir_owned);
+
     if strings_dir.is_dir() {
         for filename in EXPECTED_STRING_FILES {
             let path = strings_dir.join(filename);
@@ -343,15 +354,21 @@ fn collect_checks(dist_dir: &Path) -> Result<Vec<ValidationResult>> {
     } else {
         results.push(ValidationResult::fail(
             "All 12 string files present",
-            "Strings directory not found in dist",
+            "Strings directory not found",
         ));
     }
 
-    // Interface files
-    let interface_dir = dist_dir.join("Interface");
-    collect_interface_checks(&mut results, dist_dir, &interface_dir)?;
+    // Interface files: prefer source dir, fallback to dist/Interface/
+    if let Some(p) = source_interface {
+        if !p.is_dir() {
+            anyhow::bail!("Source interface directory does not exist: {}", p.display());
+        }
+    }
+    let interface_dir_owned = dist_dir.join("Interface");
+    let interface_dir = source_interface.unwrap_or(&interface_dir_owned);
+    collect_interface_checks(&mut results, dist_dir, interface_dir)?;
 
-    // BA2 archives
+    // BA2 archives (required)
     for (name, path) in [
         (
             "StarfieldRussian - Main.ba2",
@@ -365,6 +382,11 @@ fn collect_checks(dist_dir: &Path) -> Result<Vec<ValidationResult>> {
         if path.exists() {
             let data = fs::read(&path)?;
             results.push(check_ba2_header(&data, name));
+        } else {
+            results.push(ValidationResult::fail(
+                &format!("BA2 present: {name}"),
+                "Required archive not found",
+            ));
         }
     }
 
@@ -412,12 +434,16 @@ fn read_with_fallback(primary: &Path, fallback: &Path, filename: &str) -> Result
     Ok(None)
 }
 
-pub fn run(dist_dir: &Path) -> Result<()> {
+pub fn run(
+    dist_dir: &Path,
+    source_strings: Option<&Path>,
+    source_interface: Option<&Path>,
+) -> Result<()> {
     if !dist_dir.is_dir() {
         anyhow::bail!("Dist directory does not exist: {}", dist_dir.display());
     }
 
-    let results = collect_checks(dist_dir)?;
+    let results = collect_checks(dist_dir, source_strings, source_interface)?;
 
     // Print results
     let mut failed = 0;
@@ -662,5 +688,45 @@ mod tests {
         let data = b"BSA\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
         let result = check_ba2_header(data, "test.ba2");
         assert!(!result.passed);
+    }
+
+    #[test]
+    fn test_missing_ba2_fails() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let results = collect_checks(dist.path(), None, None).unwrap();
+        let ba2_fails: Vec<_> = results
+            .iter()
+            .filter(|r| r.check.starts_with("BA2 present"))
+            .collect();
+        assert_eq!(ba2_fails.len(), 2, "Should fail for both missing BA2s");
+        assert!(ba2_fails.iter().all(|r| !r.passed));
+    }
+
+    #[test]
+    fn test_validate_with_source_strings() {
+        use tempfile::TempDir;
+
+        let dist = TempDir::new().unwrap();
+        let source = TempDir::new().unwrap();
+
+        // Create string files in source dir (not in dist/Strings/)
+        for filename in EXPECTED_STRING_FILES {
+            let mut data = Vec::new();
+            data.extend_from_slice(&0u32.to_le_bytes()); // count=0
+            data.extend_from_slice(&0u32.to_le_bytes()); // data_size=0
+            fs::write(source.path().join(filename), &data).unwrap();
+        }
+
+        let results = collect_checks(dist.path(), Some(source.path()), None).unwrap();
+        let string_results: Vec<_> = results
+            .iter()
+            .filter(|r| r.check.starts_with("String file valid"))
+            .collect();
+        assert_eq!(string_results.len(), 12);
+        assert!(
+            string_results.iter().all(|r| r.passed),
+            "All string file checks should pass with source dir"
+        );
     }
 }
