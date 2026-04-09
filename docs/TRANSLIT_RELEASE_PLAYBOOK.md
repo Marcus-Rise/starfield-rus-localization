@@ -17,21 +17,6 @@
 
 `Interface.ba2` в этом сценарии содержит только транслитерированный `translate_en.txt`.
 
-## Быстрый smoke-run на свежем main
-
-Если сначала нужно проверить, что текущий pipeline вообще работает на вашем наборе данных:
-
-```bash
-cd tools/ba2-packer
-cargo run --release -- smoke-test \
-  --input-dir /path/to/Data \
-  --interface-dir ../../src/interface \
-  --output-dir /tmp/starfield-smoke \
-  --credit "Автор перевода"
-```
-
-Важно: сейчас `smoke-test` нужно запускать с явным `--interface-dir ../../src/interface`, если вы находитесь в `tools/ba2-packer/`. Дефолтный `src/interface` зависит от `cwd`.
-
 ## Канонический standard-font translit release
 
 Ниже команды для сборки в отдельную временную директорию без изменений tracked-файлов в репозитории.

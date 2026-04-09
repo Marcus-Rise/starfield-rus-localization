@@ -12,13 +12,11 @@ Rust-инструментарий для сборки и валидации мо
 
 ## Если вы новичок
 
-Ниже три коротких сценария. Если нужно быстро проверить, что весь pipeline вообще работает, начните со `smoke-test`.
+Если нужно быстро проверить, что весь pipeline вообще работает, начните со `smoke-test`. Остальные сценарии вынесены в отдельные документы, чтобы `README` оставался короткой точкой входа.
 
-### Сценарий 1. Есть готовые файлы `_ru`
+### Рекомендуемый первый запуск
 
 Это самый частый путь: у вас уже есть перевод и интерфейсные файлы (`*_ru.STRINGS`, `translate_ru.txt`, возможно `fonts_ru.swf` и `fontconfig_ru.txt`).
-
-Рекомендуемый первый запуск:
 
 ```bash
 cd tools/ba2-packer
@@ -37,31 +35,11 @@ cargo build --release
 - собирает `Main.ba2` и `Interface.ba2`
 - запускает `validate`
 
-Если нужен пошаговый сценарий вместо одной команды: [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-1-есть-файлы-_ru).
-
-### Сценарий 2. Уже есть готовые `src/strings` и `src/interface`
-
-Используйте этот путь, если файлы уже подготовлены и разложены по структуре репозитория.
-
-```bash
-cd tools/ba2-packer
-cargo build --release
-
-cargo run --release -- create-esm --output ../../dist/StarfieldRussian.esm
-cargo run --release -- pack \
-  --input-strings ../../src/strings \
-  --input-interface ../../src/interface \
-  --output-dir ../../dist
-cargo run --release -- validate ../../dist \
-  --source-strings ../../src/strings \
-  --source-interface ../../src/interface
-```
-
-### Сценарий 3. Нужен translit-вариант без кириллических шрифтов
-
-Используйте этот вариант, если мод должен опираться на стандартные латинские шрифты игры. В этом случае текст переводится в транслит, а кириллические font assets не используются.
-
-Пошаговый сценарий: [docs/WORKFLOW.md](docs/WORKFLOW.md).
+Дальше выберите нужный сценарий:
+- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-1-есть-файлы-_ru) — если у вас есть готовые файлы `_ru`
+- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-2-есть-оригинальные-файлы) — если нужно извлечь и отредактировать перевод
+- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-3-валидация-и-упаковка) — если `src/strings` и `src/interface` уже подготовлены
+- [docs/TRANSLIT_RELEASE_PLAYBOOK.md](docs/TRANSLIT_RELEASE_PLAYBOOK.md) — если нужен practical runbook для translit-варианта со стандартными игровыми шрифтами
 
 ## Быстрый выбор команды
 
