@@ -16,6 +16,15 @@ cargo build --release
 
 ---
 
+## Сценарий 0: Только получить `Strings` с транслитом
+
+Используйте этот сценарий, если на входе уже есть папка `Strings` с кириллицей, а на выходе нужна такая же папка `Strings`, но с латинской транслитерацией. Это отдельный lightweight workflow без `BA2`, `ESM` и финальной упаковки.
+
+Что читать дальше:
+- [docs/playbooks/transliterate-strings-only.md](playbooks/transliterate-strings-only.md)
+
+---
+
 ## Сценарий 1: Есть файлы `_ru`
 
 Самый частый путь. У вас есть готовые файлы перевода с суффиксом `_ru`:
@@ -25,6 +34,7 @@ cargo build --release
 
 Что читать дальше:
 - [docs/playbooks/build-from-ru.md](playbooks/build-from-ru.md) — канонический пошаговый сценарий
+- [docs/playbooks/transliterate-strings-only.md](playbooks/transliterate-strings-only.md) — если нужен только промежуточный набор `Strings` с транслитом
 - [docs/playbooks/translit-standard-fonts.md](playbooks/translit-standard-fonts.md) — отдельный practical runbook для translit-варианта без кастомных кириллических шрифтов
 
 ---
