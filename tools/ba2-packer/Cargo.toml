@@ -1,0 +1,22 @@
+[package]
+name = "ba2-packer"
+version = "0.1.0"
+edition = "2021"
+description = "CLI tool for building Starfield Russian Translation Mod BA2 archives"
+
+[dependencies]
+anyhow = "1"
+ba2 = "3"
+clap = { version = "4", features = ["derive"] }
+encoding_rs = "0.8"
+
+[dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
+tempfile = "3"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"

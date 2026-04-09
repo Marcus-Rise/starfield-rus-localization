@@ -1,0 +1,60 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Lint & Test
+        working-directory: tools/ba2-packer
+        run: |
+          cargo fmt --check
+          cargo clippy -- -D warnings
+          cargo test
+
+      - name: Build BA2 packer
+        working-directory: tools/ba2-packer
+        run: cargo build --release
+
+      - name: Build ESM (Spriggit)
+        run: |
+          dotnet tool install -g Spriggit.CLI
+          spriggit deserialize \
+            --InputPath src/plugin/StarfieldRussian \
+            --OutputPath dist/StarfieldRussian.esm \
+            --GameRelease Starfield
+
+      - name: Pack BA2 archives
+        run: |
+          ./tools/ba2-packer/target/release/ba2-packer pack \
+            --input-strings src/strings \
+            --input-interface src/interface \
+            --output-dir dist
+
+      - name: Validate
+        run: ./tools/ba2-packer/target/release/ba2-packer validate dist
+
+      - name: Package
+        run: |
+          cd dist
+          zip -r ../StarfieldRussian-${{ github.ref_name }}.zip .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: StarfieldRussian-${{ github.ref_name }}.zip
+          generate_release_notes: true

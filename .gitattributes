@@ -1,0 +1,6 @@
+*.STRINGS filter=lfs diff=lfs merge=lfs -text
+*.DLSTRINGS filter=lfs diff=lfs merge=lfs -text
+*.ILSTRINGS filter=lfs diff=lfs merge=lfs -text
+*.swf filter=lfs diff=lfs merge=lfs -text
+*.ba2 filter=lfs diff=lfs merge=lfs -text
+*.esm filter=lfs diff=lfs merge=lfs -text

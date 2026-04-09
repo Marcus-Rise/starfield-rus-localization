@@ -1,0 +1,71 @@
+name: PR Validation
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        working-directory: tools/ba2-packer
+        run: cargo fmt --check
+
+      - name: Clippy
+        working-directory: tools/ba2-packer
+        run: cargo clippy -- -D warnings
+
+      - name: Run tests
+        working-directory: tools/ba2-packer
+        run: cargo test
+
+  check-sources:
+    name: Check Source Files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check fontconfig_en.txt
+        run: |
+          if [ -f "src/interface/fontconfig_en.txt" ]; then
+            if grep -q 'fontlib "fonts_en"' src/interface/fontconfig_en.txt; then
+              echo "fontconfig_en.txt: fontlib reference OK"
+            else
+              echo "ERROR: fontconfig_en.txt missing fontlib \"fonts_en\""
+              exit 1
+            fi
+          fi
+
+      - name: Check translate_en.txt encoding
+        run: |
+          if [ -f "src/interface/translate_en.txt" ]; then
+            ENCODING=$(file -b src/interface/translate_en.txt)
+            if echo "$ENCODING" | grep -qi "UTF-16"; then
+              echo "translate_en.txt: encoding OK ($ENCODING)"
+            else
+              echo "ERROR: translate_en.txt should be UTF-16LE, got: $ENCODING"
+              exit 1
+            fi
+          fi
+
+      - name: Check directory structure
+        run: |
+          MISSING=0
+          for dir in src/strings src/interface src/plugin/StarfieldRussian tools/ba2-packer .github/workflows; do
+            if [ ! -d "$dir" ]; then
+              echo "MISSING: $dir"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -gt 0 ]; then
+            echo "ERROR: $MISSING required directories missing"
+            exit 1
+          fi
+          echo "Directory structure OK"
