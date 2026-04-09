@@ -45,7 +45,7 @@
 5. Проверьте кодировку `translate_en.txt` — UTF-16LE с BOM
 6. Создайте ESM-плагин: `ba2-packer create-esm --output dist/StarfieldRussian.esm`
 7. Упакуйте архивы: `ba2-packer pack --input-strings ... --input-interface ... --output-dir dist`
-8. Запустите `ba2-packer validate dist/ --source-strings src/strings --source-interface src/interface` для проверки
+8. Запустите `ba2-packer validate dist/ --source-strings src/strings --source-interface src/interface` для проверки (для translit-варианта добавьте `--profile standard-font-translit`)
 
 ### Авторские права
 

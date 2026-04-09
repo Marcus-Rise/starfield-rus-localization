@@ -70,23 +70,19 @@ du -h "$ROOT/dist"/*
 - `StarfieldRussian.esm`: `76B`
 - `CREDITS.txt`: присутствует
 
-## Ограничение текущего validate
+## Валидация
 
-Если прогнать:
+Используйте профиль `standard-font-translit`, чтобы пропустить проверки `fontconfig_en.txt` и `fonts_en.swf`:
 
 ```bash
 cargo run --release -- validate "$ROOT/dist" \
   --source-strings "$ROOT/stage/strings" \
   --source-interface "$ROOT/stage/interface" \
-  --require-credits
+  --require-credits \
+  --profile standard-font-translit
 ```
 
-то сейчас ожидаемо провалятся 2 проверки:
-
-- `Interface file present: fontconfig_en.txt`
-- `Interface file present: fonts_en.swf`
-
-Это не ошибка сборки standard-font translit-варианта. Это текущее ограничение `validate`, который моделирует полный interface bundle.
+Профиль `standard-font-translit` проверяет всё то же, что и `full`, но пропускает проверки шрифтовых файлов, которые намеренно отсутствуют в этом сценарии.
 
 ## Перед публикацией
 

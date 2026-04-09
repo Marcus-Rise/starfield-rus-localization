@@ -103,6 +103,17 @@ Creates `StarfieldRussian - Main.ba2` (strings) and `StarfieldRussian - Interfac
 
 ### 7. Validate output
 
+If the build uses standard game fonts (no `fontconfig_en.txt` / `fonts_en.swf`), use the `standard-font-translit` profile:
+
+```bash
+cd tools/ba2-packer && cargo run --release -- validate ../../dist \
+  --source-strings ../../src/strings \
+  --source-interface ../../src/interface \
+  --profile standard-font-translit
+```
+
+If custom Cyrillic fonts are included, use the default `full` profile (or omit `--profile`):
+
 ```bash
 cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```

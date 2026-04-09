@@ -82,6 +82,7 @@ pub fn run(
         Some(&transliterated_dir),
         Some(&staged_interface_dir),
         credit.is_some(),
+        validate::ValidationProfile::Full,
     );
 
     // Print publish readiness summary

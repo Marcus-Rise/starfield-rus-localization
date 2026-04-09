@@ -4,6 +4,17 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
+/// Validation profile determines which checks are enforced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ValidationProfile {
+    /// Full validation: all interface files required (fontconfig, `fonts_en.swf`, translate).
+    #[default]
+    Full,
+    /// Standard-font translit: only `translate_en.txt` is required;
+    /// `fontconfig_en.txt` and `fonts_en.swf` are intentionally absent.
+    StandardFontTranslit,
+}
+
 const EXPECTED_STRING_FILES: &[&str] = &[
     "starfield_en.STRINGS",
     "starfield_en.DLSTRINGS",
@@ -366,6 +377,7 @@ fn collect_checks(
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
     require_credits: bool,
+    profile: ValidationProfile,
 ) -> Result<Vec<ValidationResult>> {
     let mut results: Vec<ValidationResult> = Vec::new();
 
@@ -421,7 +433,7 @@ fn collect_checks(
     }
     let interface_dir_owned = dist_dir.join("Interface");
     let interface_dir = source_interface.unwrap_or(&interface_dir_owned);
-    collect_interface_checks(&mut results, &interface_dir_owned, interface_dir)?;
+    collect_interface_checks(&mut results, &interface_dir_owned, interface_dir, profile)?;
 
     // BA2 archives (required)
     for (name, path) in [
@@ -455,8 +467,9 @@ fn collect_interface_checks(
     results: &mut Vec<ValidationResult>,
     dist_interface_dir: &Path,
     interface_dir: &Path,
+    profile: ValidationProfile,
 ) -> Result<()> {
-    // translate_en.txt
+    // translate_en.txt — required in all profiles
     let translate_data = read_with_fallback(interface_dir, dist_interface_dir, "translate_en.txt")?;
     if let Some(data) = translate_data {
         results.push(check_translate_encoding(&data));
@@ -468,28 +481,29 @@ fn collect_interface_checks(
         ));
     }
 
-    // fontconfig_en.txt
-    let fontconfig_data =
-        read_with_fallback(interface_dir, dist_interface_dir, "fontconfig_en.txt")?;
-    if let Some(data) = fontconfig_data {
-        results.push(check_fontconfig_fontlib(&data));
-        results.push(check_fontconfig_cyrillic(&data));
-    } else {
-        results.push(ValidationResult::fail(
-            "Interface file present: fontconfig_en.txt",
-            "File not found",
-        ));
-    }
+    // fontconfig_en.txt and fonts_en.swf — skipped in standard-font-translit profile
+    if profile == ValidationProfile::Full {
+        let fontconfig_data =
+            read_with_fallback(interface_dir, dist_interface_dir, "fontconfig_en.txt")?;
+        if let Some(data) = fontconfig_data {
+            results.push(check_fontconfig_fontlib(&data));
+            results.push(check_fontconfig_cyrillic(&data));
+        } else {
+            results.push(ValidationResult::fail(
+                "Interface file present: fontconfig_en.txt",
+                "File not found",
+            ));
+        }
 
-    // fonts_en.swf
-    let swf_data = read_with_fallback(interface_dir, dist_interface_dir, "fonts_en.swf")?;
-    if let Some(data) = swf_data {
-        results.push(check_swf_magic(&data));
-    } else {
-        results.push(ValidationResult::fail(
-            "Interface file present: fonts_en.swf",
-            "File not found",
-        ));
+        let swf_data = read_with_fallback(interface_dir, dist_interface_dir, "fonts_en.swf")?;
+        if let Some(data) = swf_data {
+            results.push(check_swf_magic(&data));
+        } else {
+            results.push(ValidationResult::fail(
+                "Interface file present: fonts_en.swf",
+                "File not found",
+            ));
+        }
     }
 
     Ok(())
@@ -512,12 +526,23 @@ pub fn run(
     source_strings: Option<&Path>,
     source_interface: Option<&Path>,
     require_credits: bool,
+    profile: ValidationProfile,
 ) -> Result<()> {
     if !dist_dir.is_dir() {
         anyhow::bail!("Dist directory does not exist: {}", dist_dir.display());
     }
 
-    let results = collect_checks(dist_dir, source_strings, source_interface, require_credits)?;
+    if profile == ValidationProfile::StandardFontTranslit {
+        println!("Profile: standard-font-translit (font checks skipped)");
+    }
+
+    let results = collect_checks(
+        dist_dir,
+        source_strings,
+        source_interface,
+        require_credits,
+        profile,
+    )?;
 
     // Print results
     let mut failed = 0;
@@ -787,7 +812,8 @@ mod tests {
     fn test_missing_ba2_fails() {
         use tempfile::TempDir;
         let dist = TempDir::new().unwrap();
-        let results = collect_checks(dist.path(), None, None, false).unwrap();
+        let results =
+            collect_checks(dist.path(), None, None, false, ValidationProfile::Full).unwrap();
         let ba2_fails: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("BA2 present"))
@@ -811,7 +837,14 @@ mod tests {
             fs::write(source.path().join(filename), &data).unwrap();
         }
 
-        let results = collect_checks(dist.path(), Some(source.path()), None, false).unwrap();
+        let results = collect_checks(
+            dist.path(),
+            Some(source.path()),
+            None,
+            false,
+            ValidationProfile::Full,
+        )
+        .unwrap();
         let string_results: Vec<_> = results
             .iter()
             .filter(|r| r.check.starts_with("String file valid"))
@@ -930,7 +963,13 @@ mod tests {
         .unwrap();
 
         let mut results = Vec::new();
-        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::Full,
+        )
+        .unwrap();
 
         let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
         assert!(
@@ -968,7 +1007,13 @@ mod tests {
         .unwrap();
 
         let mut results = Vec::new();
-        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::Full,
+        )
+        .unwrap();
 
         let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
         assert!(
@@ -985,7 +1030,13 @@ mod tests {
         let interface = TempDir::new().unwrap();
 
         let mut results = Vec::new();
-        collect_interface_checks(&mut results, dist.path(), interface.path()).unwrap();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::Full,
+        )
+        .unwrap();
 
         let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
         assert_eq!(
@@ -993,6 +1044,101 @@ mod tests {
             3,
             "Should fail for all 3 missing interface files, got {} fails",
             fails.len()
+        );
+    }
+
+    #[test]
+    fn test_standard_font_translit_skips_font_checks() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        // Provide only translate_en.txt — no fontconfig or fonts_en.swf
+        let mut translate = vec![0xFF, 0xFE];
+        for c in "$KEY\tValue\n".encode_utf16() {
+            translate.extend_from_slice(&c.to_le_bytes());
+        }
+        fs::write(interface.path().join("translate_en.txt"), &translate).unwrap();
+
+        let mut results = Vec::new();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::StandardFontTranslit,
+        )
+        .unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert!(
+            fails.is_empty(),
+            "Standard-font-translit profile should not fail for missing font files, got: {:?}",
+            fails.iter().map(|r| &r.check).collect::<Vec<_>>()
+        );
+        // Should still have translate checks (encoding + format)
+        assert_eq!(
+            results.len(),
+            2,
+            "Should have exactly 2 checks (translate encoding + format)"
+        );
+    }
+
+    #[test]
+    fn test_standard_font_translit_still_requires_translate() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        // No files at all
+        let mut results = Vec::new();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::StandardFontTranslit,
+        )
+        .unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert_eq!(
+            fails.len(),
+            1,
+            "Should fail only for missing translate_en.txt, got {} fails",
+            fails.len()
+        );
+        assert!(
+            fails[0].check.contains("translate_en.txt"),
+            "Failure should be about translate_en.txt"
+        );
+    }
+
+    #[test]
+    fn test_full_profile_fails_without_font_files() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let interface = TempDir::new().unwrap();
+
+        // Provide only translate_en.txt — same setup as standard-font-translit test
+        let mut translate = vec![0xFF, 0xFE];
+        for c in "$KEY\tValue\n".encode_utf16() {
+            translate.extend_from_slice(&c.to_le_bytes());
+        }
+        fs::write(interface.path().join("translate_en.txt"), &translate).unwrap();
+
+        let mut results = Vec::new();
+        collect_interface_checks(
+            &mut results,
+            dist.path(),
+            interface.path(),
+            ValidationProfile::Full,
+        )
+        .unwrap();
+
+        let fails: Vec<_> = results.iter().filter(|r| r.is_failed()).collect();
+        assert_eq!(
+            fails.len(),
+            2,
+            "Full profile should fail for missing fontconfig_en.txt and fonts_en.swf"
         );
     }
 

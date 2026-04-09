@@ -6,8 +6,9 @@ Run full validation of the built mod artifacts in `dist/`.
 By default validates `../../dist` with `--source-strings ../../src/strings --source-interface ../../src/interface`.
 
 Examples:
-- `/project:full-validate` — validate `dist/` with source dirs
+- `/project:full-validate` — validate `dist/` with source dirs (full profile)
 - `/project:full-validate --require-credits` — also enforce CREDITS.txt
+- `/project:full-validate --profile standard-font-translit` — skip font file checks for translit builds
 
 ## Steps
 
@@ -27,5 +28,5 @@ Examples:
 
 - Do NOT assume `ba2-packer` is in PATH — always use `cargo run --release --` from `tools/ba2-packer/`
 - Output directory is `dist/` (not `output/`)
-- The validate subcommand runs 13 checks + 1 warning (ESM flags, string files, UI translation encoding, font config, SWF magic, BA2 headers, size limits, credits)
+- The validate subcommand supports two profiles: `full` (default, all checks including font files) and `standard-font-translit` (skips fontconfig_en.txt and fonts_en.swf checks)
 - If `dist/` does not exist or is empty, tell the user to run the build first (use the `build-mod` or `transliterate-mod` agent)
