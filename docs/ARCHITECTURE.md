@@ -30,6 +30,7 @@
 - Путь: `Data/Interface/translate_en.txt`
 - Кодировка: **UTF-16LE с BOM** (0xFF 0xFE)
 - Формат: `$KEY\tValue\n` (tab-separated, одна пара на строку)
+- Также принимается quoted CSV: `"$KEY\tOrig","Translation"` или `"$KEY","Value"` — автоматически нормализуется в `$KEY\tValue`
 
 ## Шрифтовая система
 
