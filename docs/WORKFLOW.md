@@ -85,7 +85,9 @@ ba2-packer transliterate \
 
 # 5. Разместить файлы в src/
 cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
-cp build/fontconfig_en.txt build/translate_en.txt src/interface/
+# Интерфейсные файлы берутся из оригинальных данных игры (не из build/)
+cp /path/to/Data/Interface/fontconfig_en.txt src/interface/
+cp /path/to/Data/Interface/translate_en.txt src/interface/
 # Шрифт fonts_en.swf нужно подготовить отдельно — см. раздел «Замена шрифтов»
 
 # 6. Создать ESM-плагин
