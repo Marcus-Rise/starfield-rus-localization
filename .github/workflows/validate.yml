@@ -42,21 +42,57 @@ jobs:
         working-directory: tools/ba2-packer
         run: cargo build --release
 
-      - name: Verify CLI subcommands documented in README
+      - name: Verify subcommands documented
         run: |
-          HELP=$(./tools/ba2-packer/target/release/ba2-packer --help 2>&1)
+          CLI=./tools/ba2-packer/target/release/ba2-packer
+          HELP=$($CLI --help 2>&1)
           CMDS=$(echo "$HELP" | sed -n '/Commands:/,/Options:/p' | grep -E '^\s+\w' | awk '{print $1}' | grep -v '^help$')
-          FAIL=0
-          for cmd in $CMDS; do
-            if ! grep -qw "$cmd" README.md; then
-              echo "ERROR: subcommand '$cmd' not documented in README.md"
-              FAIL=1
-            fi
-          done
-          if [ $FAIL -eq 1 ]; then
+
+          if [ -z "$CMDS" ]; then
+            echo "ERROR: no subcommands extracted from '$CLI --help'"
             exit 1
           fi
-          echo "All subcommands documented in README.md"
+          echo "Subcommands: $CMDS"
+          FAIL=0
+
+          # 1) README.md — all subcommands
+          echo "--- README.md ---"
+          ERR=0
+          for cmd in $CMDS; do
+            if ! grep -qw "$cmd" README.md; then
+              echo "  MISSING: $cmd"; ERR=1
+            fi
+          done
+          [ $ERR -eq 0 ] && echo "  OK"
+          FAIL=$((FAIL | ERR))
+
+          # 2) docs/WORKFLOW.md — all subcommands
+          echo "--- docs/WORKFLOW.md ---"
+          ERR=0
+          for cmd in $CMDS; do
+            if ! grep -qw "$cmd" docs/WORKFLOW.md; then
+              echo "  MISSING: $cmd"; ERR=1
+            fi
+          done
+          [ $ERR -eq 0 ] && echo "  OK"
+          FAIL=$((FAIL | ERR))
+
+          # 3) .claude/agents/*.md — each subcommand in at least one agent
+          echo "--- .claude/agents/ ---"
+          ERR=0
+          for cmd in $CMDS; do
+            if ! grep -qw "$cmd" .claude/agents/*.md 2>/dev/null; then
+              echo "  MISSING: $cmd (not in any agent file)"; ERR=1
+            fi
+          done
+          [ $ERR -eq 0 ] && echo "  OK"
+          FAIL=$((FAIL | ERR))
+
+          if [ $FAIL -ne 0 ]; then
+            echo "FAILED: update the files above, see CLAUDE.md Rule 7"
+            exit 1
+          fi
+          echo "All documentation in sync."
 
   check-sources:
     name: Check Source Files
