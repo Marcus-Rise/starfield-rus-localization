@@ -2,13 +2,12 @@ Run full validation of the built mod artifacts in `dist/`.
 
 ## Arguments
 
-`$ARGUMENTS` — optional flags passed directly to `ba2-packer validate`.
-If empty, defaults to validating `../../dist` from `tools/ba2-packer/`.
+`$ARGUMENTS` — optional extra flags passed directly to `ba2-packer validate`.
+By default validates `../../dist` with `--source-strings ../../src/strings --source-interface ../../src/interface`.
 
 Examples:
-- `/project:full-validate` — validate `dist/` with defaults
+- `/project:full-validate` — validate `dist/` with source dirs
 - `/project:full-validate --require-credits` — also enforce CREDITS.txt
-- `/project:full-validate --source-strings ../../build/renamed` — use custom source strings path
 
 ## Steps
 
@@ -19,7 +18,7 @@ Examples:
 
 2. **Run validation**:
    ```bash
-   cd tools/ba2-packer && cargo run --release -- validate ../../dist $ARGUMENTS
+   cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface $ARGUMENTS
    ```
 
 3. **Report results** — summarize which checks passed, failed, or produced warnings. If any checks failed, list them clearly and suggest fixes.

@@ -89,7 +89,7 @@ cd tools/ba2-packer && cargo run --release -- pack \
 ### 9. Validate
 
 ```bash
-cd tools/ba2-packer && cargo run --release -- validate ../../dist
+cd tools/ba2-packer && cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```
 
 Report all results. If any validation check fails, list it and suggest a fix.
