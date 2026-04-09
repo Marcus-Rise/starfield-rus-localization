@@ -72,10 +72,15 @@ pub fn run(output: &Path) -> Result<()> {
 
     let esm = build_esm();
     let filename = format!("{MOD_NAME}.esm");
-    let output_path = if output.is_dir() {
-        output.join(&filename)
-    } else {
+    let is_file_path = output
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("esm"));
+    let output_path = if is_file_path {
         output.to_path_buf()
+    } else {
+        fs::create_dir_all(output)
+            .with_context(|| format!("Failed to create directory: {}", output.display()))?;
+        output.join(&filename)
     };
 
     fs::write(&output_path, &esm)

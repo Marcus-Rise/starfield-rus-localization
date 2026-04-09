@@ -330,10 +330,13 @@ fn collect_checks(
     }
 
     // String files check: prefer source dir, fallback to dist/Strings/
+    if let Some(p) = source_strings {
+        if !p.is_dir() {
+            anyhow::bail!("Source strings directory does not exist: {}", p.display());
+        }
+    }
     let strings_dir_owned = dist_dir.join("Strings");
-    let strings_dir = source_strings
-        .filter(|p| p.is_dir())
-        .unwrap_or(&strings_dir_owned);
+    let strings_dir = source_strings.unwrap_or(&strings_dir_owned);
 
     if strings_dir.is_dir() {
         for filename in EXPECTED_STRING_FILES {
@@ -356,10 +359,13 @@ fn collect_checks(
     }
 
     // Interface files: prefer source dir, fallback to dist/Interface/
+    if let Some(p) = source_interface {
+        if !p.is_dir() {
+            anyhow::bail!("Source interface directory does not exist: {}", p.display());
+        }
+    }
     let interface_dir_owned = dist_dir.join("Interface");
-    let interface_dir = source_interface
-        .filter(|p| p.is_dir())
-        .unwrap_or(&interface_dir_owned);
+    let interface_dir = source_interface.unwrap_or(&interface_dir_owned);
     collect_interface_checks(&mut results, dist_dir, interface_dir)?;
 
     // BA2 archives (required)
