@@ -10,8 +10,8 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
 ## Project Decisions
 
 ### Tooling
-- **Rust only** — no Python/Node.js. Single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`
-- **Rust dependencies**: `ba2` (bsa-rs), `clap` (derive), `anyhow`, `encoding_rs`, `serde`/`serde_json`
+- **Rust only** — no Python/Node.js. Single CLI `tools/ba2-packer` with subcommands: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`, `smoke-test`
+- **Rust dependencies**: `ba2` (bsa-rs), `clap` (derive), `anyhow`, `encoding_rs`, `serde`/`serde_json`, `tempfile`
 
 ### Copyright
 - **Fonts**: Repository MUST NOT contain proprietary fonts (NB Architekt, NB Grotesk, Handwritten_Institute). Only tools and instructions for creating SWF with free fonts (SIL OFL: PT Sans, Noto Sans, etc.) via JPEXS FFDec
@@ -94,7 +94,7 @@ src/
   strings/            # Placeholders for string tables (binary, Git LFS)
   interface/          # Templates: fontconfig, translate; placeholder for fonts_en.swf
   plugin/             # Placeholder for Spriggit ESM
-tools/ba2-packer/     # Rust CLI: pack, validate, rename, extract, repack, create-esm, transliterate
+tools/ba2-packer/     # Rust CLI: pack, validate, rename, extract, repack, create-esm, transliterate, smoke-test
 docs/                 # Project documentation
 .github/workflows/    # CI/CD
 ```
