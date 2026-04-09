@@ -10,31 +10,77 @@ Rust-инструментарий для сборки и валидации мо
 - Шрифтовой пакет — проприетарные шрифты запрещены, используются свободные (SIL OFL)
 - Скачиваемый мод — здесь только инструменты сборки
 
-## Для кого
+## Если вы новичок
 
-- **У вас есть файлы `_ru`** (свой перевод или файлы с разрешением автора) — соберите мод за 4 команды
-- **У вас есть оригинальные файлы игры** — извлеките строки, отредактируйте, соберите мод
-- **Нужно только проверить/упаковать** готовый набор файлов — validate + pack
+Ниже три коротких сценария. Если нужно быстро проверить, что весь pipeline вообще работает, начните со `smoke-test`.
 
-## Быстрый старт
+### Сценарий 1. Есть готовые файлы `_ru`
 
-Выберите свой сценарий:
+Это самый частый путь: у вас уже есть перевод и интерфейсные файлы (`*_ru.STRINGS`, `translate_ru.txt`, возможно `fonts_ru.swf` и `fontconfig_ru.txt`).
 
-1. [У меня есть файлы `_ru`](docs/WORKFLOW.md#сценарий-1-есть-файлы-_ru) — самый частый путь
-2. [У меня есть оригинальные файлы и нужно подготовить ресурсы](docs/WORKFLOW.md#сценарий-2-есть-оригинальные-файлы)
-3. [Хочу только проверить/упаковать готовый набор](docs/WORKFLOW.md#сценарий-3-валидация-и-упаковка)
+Рекомендуемый первый запуск:
 
-### Какую команду использовать?
+```bash
+cd tools/ba2-packer
+cargo build --release
 
-| Задача | Команда |
+./target/release/ba2-packer smoke-test \
+  --input-dir /path/to/Data \
+  --output-dir /tmp/starfield-smoke \
+  --credit "Автор перевода"
+```
+
+Что делает `smoke-test`:
+- переименовывает `_ru` → `_en`
+- транслитерирует кириллицу в латиницу
+- создаёт `StarfieldRussian.esm`
+- собирает `Main.ba2` и `Interface.ba2`
+- запускает `validate`
+
+Если нужен пошаговый сценарий вместо одной команды: [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-1-есть-файлы-_ru).
+
+### Сценарий 2. Уже есть готовые `src/strings` и `src/interface`
+
+Используйте этот путь, если файлы уже подготовлены и разложены по структуре репозитория.
+
+```bash
+cd tools/ba2-packer
+cargo build --release
+
+cargo run --release -- create-esm --output ../../dist/StarfieldRussian.esm
+cargo run --release -- pack \
+  --input-strings ../../src/strings \
+  --input-interface ../../src/interface \
+  --output-dir ../../dist
+cargo run --release -- validate ../../dist \
+  --source-strings ../../src/strings \
+  --source-interface ../../src/interface
+```
+
+### Сценарий 3. Нужен translit-вариант без кириллических шрифтов
+
+Используйте этот вариант, если мод должен опираться на стандартные латинские шрифты игры. В этом случае текст переводится в транслит, а кириллические font assets не используются.
+
+Пошаговый сценарий: [docs/WORKFLOW.md](docs/WORKFLOW.md).
+
+## Быстрый выбор команды
+
+| Если нужно | Команда |
 |--------|---------|
-| Есть файлы `_ru` — переименовать в `_en` | `rename` |
-| Нужно отредактировать строки перевода | `extract` / `repack` |
-| Нельзя использовать кириллицу (нет шрифтов) | `transliterate` |
+| Быстро прогнать весь pipeline на наборе `_ru` | `smoke-test` |
+| Переименовать `_ru` в `_en` | `rename` |
+| Транслитерировать кириллицу в латиницу | `transliterate` |
+| Извлечь строки для ручного редактирования | `extract` |
+| Собрать строки обратно из JSONL | `repack` |
 | Создать ESM-плагин | `create-esm` |
-| Упаковать в BA2-архивы | `pack` |
-| Проверить готовность мода | `validate` |
-| Локальный E2E smoke-тест всего пайплайна | `smoke-test` |
+| Упаковать BA2-архивы | `pack` |
+| Проверить готовность артефактов | `validate` |
+
+## Куда смотреть дальше
+
+- [docs/WORKFLOW.md](docs/WORKFLOW.md) — пошаговые сценарии сборки
+- [docs/PUBLISH_CREATIONS.md](docs/PUBLISH_CREATIONS.md) — публикация в Bethesda Creations
+- [docs/PUBLISH_NEXUS.md](docs/PUBLISH_NEXUS.md) — публикация на Nexus Mods
 
 ## Отказ от ответственности
 
@@ -65,6 +111,8 @@ Starfield на PS5 не поддерживает русский язык. Дви
 3. Скачайте и активируйте
 
 > ⚠️ Загрузка кириллических шрифтов на PS5 не проверена. Подробности в `docs/ARCHITECTURE.md`.
+>
+> Практический fallback — translit-вариант без кириллических шрифтов.
 
 ### PC (Nexus Mods)
 1. Скачайте zip с [GitHub Releases](../../releases/latest)
@@ -81,21 +129,28 @@ Starfield на PS5 не поддерживает русский язык. Дви
 - .NET 8 SDK (для Spriggit)
 - Git LFS
 
-### Шаги
+### Минимальная сборка CLI
 
 ```bash
 git clone --recurse-submodules <repo-url>
 cd starfield-rus-localization
 
-# Сборка CLI инструмента
 cd tools/ba2-packer
 cargo build --release
+```
+
+Бинарь: `target/release/ba2-packer`
+
+### Полная сборка из репозиторных исходников
+
+```bash
+cd tools/ba2-packer
 
 # Сборка ESM (требуются файлы плагина в src/plugin/)
 dotnet tool install -g Spriggit.CLI
 spriggit deserialize \
-  --InputPath src/plugin/StarfieldRussian \
-  --OutputPath dist/StarfieldRussian.esm \
+  --InputPath ../../src/plugin/StarfieldRussian \
+  --OutputPath ../../dist/StarfieldRussian.esm \
   --GameRelease Starfield
 
 # Упаковка BA2 (требуются файлы перевода в src/strings/ и src/interface/)
@@ -104,7 +159,6 @@ cargo run --release -- pack \
   --input-interface ../../src/interface \
   --output-dir ../../dist
 
-# Валидация
 cargo run --release -- validate ../../dist --source-strings ../../src/strings --source-interface ../../src/interface
 ```
 
