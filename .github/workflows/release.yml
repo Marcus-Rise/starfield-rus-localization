@@ -46,20 +46,18 @@ jobs:
           fi
 
       - name: Pack BA2 archives
+        env:
+          TRANSLATION_CREDIT: ${{ vars.TRANSLATION_CREDIT }}
         run: |
           if ls src/strings/*.STRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.DLSTRINGS 1>/dev/null 2>&1 || \
              ls src/strings/*.ILSTRINGS 1>/dev/null 2>&1 || \
              [ -f src/interface/fonts_en.swf ]; then
-            CREDIT_FLAG=""
-            if [ -n "${{ vars.TRANSLATION_CREDIT }}" ]; then
-              CREDIT_FLAG="--credit ${{ vars.TRANSLATION_CREDIT }}"
+            PACK_ARGS=(--input-strings src/strings --input-interface src/interface --output-dir dist)
+            if [ -n "$TRANSLATION_CREDIT" ]; then
+              PACK_ARGS+=(--credit "$TRANSLATION_CREDIT")
             fi
-            ./tools/ba2-packer/target/release/ba2-packer pack \
-              --input-strings src/strings \
-              --input-interface src/interface \
-              --output-dir dist \
-              $CREDIT_FLAG
+            ./tools/ba2-packer/target/release/ba2-packer pack "${PACK_ARGS[@]}"
           else
             echo "No string table or interface files found, skipping BA2 packing"
           fi
