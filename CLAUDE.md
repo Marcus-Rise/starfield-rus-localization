@@ -15,5 +15,6 @@ Free Creations mod that provides Russian localization tools for Starfield on Pla
 - **No proprietary content** — no copyrighted fonts, no third-party translations
 - **TDD** — tests first, `cargo test` must pass at every stage
 - **Linting** — `cargo fmt` + `cargo clippy -D warnings` mandatory
+- **PS5 constraints** — no loose files (BA2 only via Creations), no INI mods, no `sResourceStartUpArchiveList` changes; see `.claude/CLAUDE.md`
 
 See `.claude/CLAUDE.md` for full details.
