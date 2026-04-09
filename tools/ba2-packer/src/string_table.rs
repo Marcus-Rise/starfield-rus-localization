@@ -63,6 +63,13 @@ pub fn parse_string_table(data: &[u8], table_type: StringTableType) -> Result<Ve
         let offset = read_u32(data, dir_offset + 4)? as usize;
         let abs_offset = data_base + offset;
 
+        if abs_offset > data.len() {
+            bail!(
+                "Offset out of bounds: id={string_id}, offset={offset}, file size={}",
+                data.len()
+            );
+        }
+
         let text = match table_type {
             StringTableType::Strings => {
                 // Null-terminated UTF-8
@@ -294,6 +301,17 @@ mod tests {
         let mut data = Vec::new();
         data.extend_from_slice(&2u32.to_le_bytes());
         data.extend_from_slice(&0u32.to_le_bytes());
+        assert!(parse_string_table(&data, StringTableType::Strings).is_err());
+    }
+
+    #[test]
+    fn test_parse_offset_out_of_bounds() {
+        // header says count=1, directory points offset beyond file
+        let mut data = Vec::new();
+        data.extend_from_slice(&1u32.to_le_bytes()); // count = 1
+        data.extend_from_slice(&0u32.to_le_bytes()); // data_size = 0
+        data.extend_from_slice(&1u32.to_le_bytes()); // id = 1
+        data.extend_from_slice(&255u32.to_le_bytes()); // offset = 255 (way beyond)
         assert!(parse_string_table(&data, StringTableType::Strings).is_err());
     }
 
