@@ -1,5 +1,7 @@
 name: Build Mod
-on: [push]
+on:
+  push:
+    branches: [main]
 
 concurrency:
   group: build-${{ github.ref }}
