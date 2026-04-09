@@ -86,6 +86,7 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
     add-translation.md
     build-mod.md
     lint-and-test.md
+    onboarding.md
     publish-to-creations.md
     transliterate-mod.md
 src/
