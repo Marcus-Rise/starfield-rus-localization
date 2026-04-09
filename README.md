@@ -39,6 +39,7 @@ cargo build --release
 - [docs/playbooks/build-from-ru.md](docs/playbooks/build-from-ru.md) — если у вас есть готовые файлы `_ru`
 - [docs/playbooks/build-from-original-files.md](docs/playbooks/build-from-original-files.md) — если нужно извлечь и отредактировать перевод
 - [docs/playbooks/package-and-validate.md](docs/playbooks/package-and-validate.md) — если `src/strings` и `src/interface` уже подготовлены
+- [docs/playbooks/transliterate-strings-only.md](docs/playbooks/transliterate-strings-only.md) — если нужно только быстро получить папку `Strings` с транслитом
 - [docs/playbooks/translit-standard-fonts.md](docs/playbooks/translit-standard-fonts.md) — если нужен practical runbook для translit-варианта со стандартными игровыми шрифтами
 
 ## Быстрый выбор команды
@@ -48,6 +49,7 @@ cargo build --release
 | Быстро прогнать весь pipeline на наборе `_ru` | `smoke-test` |
 | Переименовать `_ru` в `_en` | `rename` |
 | Транслитерировать кириллицу в латиницу | `transliterate` |
+| Получить только новую папку `Strings` с транслитом | `transliterate` + [playbook](docs/playbooks/transliterate-strings-only.md) |
 | Извлечь строки для ручного редактирования | `extract` |
 | Собрать строки обратно из JSONL | `repack` |
 | Создать ESM-плагин | `create-esm` |
@@ -57,6 +59,7 @@ cargo build --release
 ## Куда смотреть дальше
 
 - [docs/WORKFLOW.md](docs/WORKFLOW.md) — карта сценариев и общие заметки
+- [docs/playbooks/transliterate-strings-only.md](docs/playbooks/transliterate-strings-only.md) — отдельный workflow `Strings -> Strings`
 - [docs/playbooks/translit-standard-fonts.md](docs/playbooks/translit-standard-fonts.md) — короткий practical playbook для translit-варианта со стандартными игровыми шрифтами
 - [docs/PUBLISH_CREATIONS.md](docs/PUBLISH_CREATIONS.md) — публикация в Bethesda Creations
 - [docs/PUBLISH_NEXUS.md](docs/PUBLISH_NEXUS.md) — публикация на Nexus Mods

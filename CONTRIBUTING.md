@@ -42,10 +42,11 @@
 2. Убедитесь что файлы `_en` (не `_ru`) — PS5 загружает только `_en`
 3. Используйте `ba2-packer rename` для конвертации `_ru` → `_en`
 4. Для редактирования перевода: `ba2-packer extract` → правка JSONL → `ba2-packer repack`
-5. Проверьте кодировку `translate_en.txt` — UTF-16LE с BOM
-6. Создайте ESM-плагин: `ba2-packer create-esm --output dist/StarfieldRussian.esm`
-7. Упакуйте архивы: `ba2-packer pack --input-strings ... --input-interface ... --output-dir dist`
-8. Запустите `ba2-packer validate dist/ --source-strings src/strings --source-interface src/interface` для проверки (для translit-варианта добавьте `--profile standard-font-translit`)
+5. Если нужен только промежуточный набор `Strings` с транслитом без сборки мода, используйте [docs/playbooks/transliterate-strings-only.md](docs/playbooks/transliterate-strings-only.md)
+6. Проверьте кодировку `translate_en.txt` — UTF-16LE с BOM
+7. Создайте ESM-плагин: `ba2-packer create-esm --output dist/StarfieldRussian.esm`
+8. Упакуйте архивы: `ba2-packer pack --input-strings ... --input-interface ... --output-dir dist`
+9. Запустите `ba2-packer validate dist/ --source-strings src/strings --source-interface src/interface` для проверки (для translit-варианта добавьте `--profile standard-font-translit`)
 
 ### Авторские права
 
