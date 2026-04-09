@@ -83,6 +83,10 @@ Detailed technical architecture: `docs/ARCHITECTURE.md`
   settings.json       # Permissions, hooks
   CLAUDE.md           # These instructions
   agents/             # Custom agents
+    add-translation.md
+    build-mod.md
+    lint-and-test.md
+    transliterate-mod.md
 src/
   strings/            # Placeholders for string tables (binary, Git LFS)
   interface/          # Templates: fontconfig, translate; placeholder for fonts_en.swf
