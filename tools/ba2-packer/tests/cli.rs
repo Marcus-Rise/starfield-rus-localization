@@ -462,7 +462,7 @@ fn test_smoke_test_nonexistent_input() {
         .failure();
 }
 
-/// Build minimal _ru string table fixtures for smoke-test.
+/// Build minimal _ru string table and interface fixtures for smoke-test.
 fn create_ru_string_fixtures(dir: &Path) {
     let text = "Привет";
     let text_bytes = text.as_bytes();
@@ -485,7 +485,7 @@ fn create_ru_string_fixtures(dir: &Path) {
     dl_binary.extend_from_slice(&(text_bytes.len() as u32).to_le_bytes());
     dl_binary.extend_from_slice(text_bytes);
 
-    // Create all 12 expected _ru files
+    // Create all 12 expected _ru string table files
     let prefixes = [
         "starfield_ru",
         "blueprintships-starfield_ru",
@@ -504,6 +504,31 @@ fn create_ru_string_fixtures(dir: &Path) {
             }
         }
     }
+
+    // Also include _ru interface files in the input package
+    fs::write(
+        dir.join("fontconfig_ru.txt"),
+        "fontlib \"fonts_ru\"\nmap \"$ConsoleFont\" = \"Font\" Normal\n\
+         validNameChars \" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\
+         АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя\"",
+    )
+    .unwrap();
+
+    // translate_ru.txt (UTF-16LE with BOM) with Cyrillic value
+    let translate_text = "$sInputKey\tЗначение из пакета";
+    let mut translate_data: Vec<u8> = vec![0xFF, 0xFE]; // BOM
+    for unit in translate_text.encode_utf16() {
+        translate_data.extend_from_slice(&unit.to_le_bytes());
+    }
+    fs::write(dir.join("translate_ru.txt"), &translate_data).unwrap();
+
+    // Minimal SWF
+    let mut swf_data = Vec::new();
+    swf_data.extend_from_slice(b"FWS");
+    swf_data.push(0x0A);
+    swf_data.extend_from_slice(&100u32.to_le_bytes());
+    swf_data.resize(100, 0);
+    fs::write(dir.join("fonts_ru.swf"), &swf_data).unwrap();
 }
 
 /// Create minimal interface fixtures for smoke-test.
@@ -624,4 +649,37 @@ fn test_smoke_test_custom_output_dir() {
         .stdout(predicate::str::contains(custom_path.to_str().unwrap()));
 
     assert!(custom_path.join("StarfieldRussian.esm").exists());
+}
+
+#[test]
+fn test_smoke_test_stages_input_interface_files() {
+    // Verify that interface files from the _ru input package are used
+    // for pack/validate, not only the external --interface-dir files.
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+    // Intentionally empty interface dir — all interface files come from input package
+    let interface = TempDir::new().unwrap();
+
+    create_ru_string_fixtures(input.path());
+    // Don't call create_interface_fixtures — rely on _ru package's own interface files
+
+    cmd()
+        .args([
+            "smoke-test",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+            "--interface-dir",
+            interface.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Smoke test PASSED"));
+
+    // Interface BA2 should exist (packed from staged input package files)
+    assert!(output
+        .path()
+        .join("StarfieldRussian - Interface.ba2")
+        .exists());
 }
