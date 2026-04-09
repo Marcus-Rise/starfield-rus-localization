@@ -290,6 +290,7 @@ pub fn run(input_dir: &Path, output_dir: &Path, credit: Option<&str>) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{Duration, Instant};
     use tempfile::TempDir;
 
     // --- transliterate_char ---
@@ -668,5 +669,52 @@ mod tests {
             .collect();
         assert_eq!(matching.len(), 1);
         assert_eq!(matching[0].0.parent().unwrap(), input.path());
+    }
+
+    // --- performance guard tests ---
+
+    #[test]
+    fn test_transliterate_perf_pure_string() {
+        let sentence = "Космическая станция на орбите планеты ";
+        let large_input: String = sentence.repeat(14_500); // ~1 MB of Cyrillic UTF-8
+
+        let start = Instant::now();
+        let result = transliterate(&large_input);
+        let elapsed = start.elapsed();
+
+        assert!(!result.is_empty());
+        assert_ne!(result, large_input);
+
+        let threshold = Duration::from_secs(5);
+        assert!(
+            elapsed < threshold,
+            "transliterate() took {elapsed:?} for ~1MB input, exceeds {threshold:?} threshold"
+        );
+    }
+
+    #[test]
+    fn test_transliterate_perf_string_table() {
+        let phrase = "Привет мир! ";
+        let entry_text = phrase.repeat(8); // ~96 chars per entry
+        let entries: Vec<(u32, &str)> = (0..10_000)
+            .map(|i| (i as u32, entry_text.as_str()))
+            .collect();
+        let data = build_strings_binary(&entries);
+
+        let start = Instant::now();
+        let result = transliterate_string_table(&data, StringTableType::Strings);
+        let elapsed = start.elapsed();
+
+        assert!(
+            result.is_ok(),
+            "transliterate_string_table failed: {:?}",
+            result.err()
+        );
+
+        let threshold = Duration::from_secs(5);
+        assert!(
+            elapsed < threshold,
+            "transliterate_string_table() took {elapsed:?} for 10,000 entries, exceeds {threshold:?} threshold"
+        );
     }
 }
