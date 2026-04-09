@@ -7,7 +7,7 @@
 - [x] Rust CLI (`ba2-packer`) компилируется и проходит линтинг
 - [x] `cargo fmt --check` + `cargo clippy -- -D warnings` — чисто
 - [x] `cargo test` — все тесты проходят (unit + integration)
-- [x] Подкоманды: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`
+- [x] Подкоманды: `pack`, `validate`, `rename`, `extract`, `repack`, `create-esm`, `transliterate`, `smoke-test`
 - [x] Структура директорий соответствует спецификации
 - [ ] CI/CD build workflow проходит (зелёная галочка)
 - [ ] Artifact `starfield-russian-mod` загружен в GitHub Actions

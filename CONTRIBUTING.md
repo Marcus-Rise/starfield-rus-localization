@@ -20,7 +20,13 @@
    cargo clippy -- -D warnings
    cargo test
    ```
-5. Создайте Pull Request
+5. Для проверки пайплайна целиком используйте `smoke-test`:
+   ```bash
+   ba2-packer smoke-test \
+     --input-dir /path/to/your/_ru/files \
+     --interface-dir ../../src/interface
+   ```
+6. Создайте Pull Request
 
 ## Стандарты кода
 

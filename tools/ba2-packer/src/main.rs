@@ -3,6 +3,7 @@ mod extract;
 mod pack;
 mod rename;
 mod repack;
+mod smoke_test;
 mod string_table;
 mod transliterate;
 mod validate;
@@ -111,6 +112,25 @@ enum Commands {
         #[arg(long)]
         credit: Option<String>,
     },
+
+    /// Run a local E2E smoke test: rename → transliterate → pack → validate
+    SmokeTest {
+        /// Input directory with _ru translation files
+        #[arg(long)]
+        input_dir: PathBuf,
+
+        /// Output directory for artifacts (default: temporary directory)
+        #[arg(long)]
+        output_dir: Option<PathBuf>,
+
+        /// Path to interface files directory
+        #[arg(long, default_value = "src/interface")]
+        interface_dir: PathBuf,
+
+        /// Credit the translation author
+        #[arg(long)]
+        credit: Option<String>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -151,5 +171,16 @@ fn main() -> anyhow::Result<()> {
             output_dir,
             credit,
         } => transliterate::run(&input_dir, &output_dir, credit.as_deref()),
+        Commands::SmokeTest {
+            input_dir,
+            output_dir,
+            interface_dir,
+            credit,
+        } => smoke_test::run(
+            &input_dir,
+            output_dir.as_deref(),
+            &interface_dir,
+            credit.as_deref(),
+        ),
     }
 }
