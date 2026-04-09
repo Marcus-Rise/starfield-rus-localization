@@ -98,11 +98,13 @@ Report the file size and confirm success.
 
 ## Step 5: Clean Up
 
-Remove the test artifact directory:
+Ask the contributor to remove the test artifact directory in their terminal:
 
-```bash
+```
 rm -r test-output/
 ```
+
+This command is not in the agent's allow-list, so it must be run manually.
 
 ## Next Steps
 
