@@ -66,16 +66,25 @@ jobs:
             echo "No string table or interface files found, skipping BA2 packing"
           fi
 
-      - name: Validate (if artifacts exist)
+      - name: Check content-ready
+        id: content
         run: |
-          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
-            ./tools/ba2-packer/target/release/ba2-packer validate dist \
-              --source-strings src/strings \
-              --source-interface src/interface \
-              --require-credits
+          if [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           else
-            echo "No artifacts to validate"
+            echo "::error::Release requires BA2 archives (translation content). Repo is still in tooling-only state."
+            exit 1
           fi
+
+      - name: Validate
+        env:
+          TRANSLATION_CREDIT: ${{ vars.TRANSLATION_CREDIT }}
+        run: |
+          VALIDATE_ARGS=(dist --source-strings src/strings --source-interface src/interface)
+          if [ -n "$TRANSLATION_CREDIT" ]; then
+            VALIDATE_ARGS+=(--require-credits)
+          fi
+          ./tools/ba2-packer/target/release/ba2-packer validate "${VALIDATE_ARGS[@]}"
 
       - name: Package
         run: |
