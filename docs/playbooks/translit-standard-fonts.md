@@ -84,6 +84,17 @@ cargo run --release -- validate "$ROOT/dist" \
 
 Профиль `standard-font-translit` проверяет всё то же, что и `full`, но пропускает проверки шрифтовых файлов, которые намеренно отсутствуют в этом сценарии.
 
+## Упаковка для релиза
+
+Если нужен один архив для Nexus Mods или ручной раздачи, упакуйте содержимое `$ROOT/dist` в zip:
+
+```bash
+cd "$ROOT/dist"
+zip -r ../StarfieldRussian-standard-font-translit.zip .
+```
+
+После этого архив будет лежать по пути `$ROOT/StarfieldRussian-standard-font-translit.zip`.
+
 ## Перед публикацией
 
 - проверьте, что `CREDITS.txt` содержит автора исходного перевода
