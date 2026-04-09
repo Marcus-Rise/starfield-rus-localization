@@ -34,6 +34,7 @@ Rust-инструментарий для сборки и валидации мо
 | Создать ESM-плагин | `create-esm` |
 | Упаковать в BA2-архивы | `pack` |
 | Проверить готовность мода | `validate` |
+| Локальный E2E smoke-тест всего пайплайна | `smoke-test` |
 
 ## Отказ от ответственности
 
@@ -109,7 +110,7 @@ cargo run --release -- validate ../../dist
 
 ## CLI инструмент (ba2-packer)
 
-Единый Rust CLI с семью подкомандами:
+Единый Rust CLI с восемью подкомандами:
 
 | Команда | Описание |
 |---------|----------|
@@ -120,6 +121,7 @@ cargo run --release -- validate ../../dist
 | `repack` | Сборка JSONL обратно в бинарные строковые таблицы |
 | `create-esm` | Генерация минимального ESM-плагина |
 | `transliterate` | Транслитерация кириллицы в латиницу |
+| `smoke-test` | Локальный E2E smoke-тест: rename → transliterate → pack → validate |
 
 ```bash
 ba2-packer pack --input-strings <DIR> --input-interface <DIR> --output-dir <DIR>
@@ -129,6 +131,7 @@ ba2-packer extract --input <FILE_OR_DIR> --output-dir <DIR>
 ba2-packer repack --input <FILE_OR_DIR> --output-dir <DIR>
 ba2-packer create-esm --output <PATH>
 ba2-packer transliterate --input-dir <DIR> --output-dir <DIR> [--credit <AUTHOR>]
+ba2-packer smoke-test --input-dir <DIR> [--output-dir <DIR>] [--interface-dir <DIR>] [--credit <AUTHOR>]
 ```
 
 ## Структура проекта

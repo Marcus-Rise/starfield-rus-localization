@@ -1,6 +1,7 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
+use std::path::Path;
 use tempfile::TempDir;
 
 fn cmd() -> Command {
@@ -18,7 +19,8 @@ fn test_help() {
         .stdout(predicate::str::contains("rename"))
         .stdout(predicate::str::contains("extract"))
         .stdout(predicate::str::contains("repack"))
-        .stdout(predicate::str::contains("transliterate"));
+        .stdout(predicate::str::contains("transliterate"))
+        .stdout(predicate::str::contains("smoke-test"));
 }
 
 #[test]
@@ -430,4 +432,196 @@ fn test_transliterate_with_credit() {
     assert!(output.path().join("CREDITS.txt").exists());
     let credits = fs::read_to_string(output.path().join("CREDITS.txt")).unwrap();
     assert!(credits.contains("TestAuthor"));
+}
+
+// --- Smoke Test ---
+
+#[test]
+fn test_smoke_test_help() {
+    cmd()
+        .args(["smoke-test", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--input-dir"))
+        .stdout(predicate::str::contains("--output-dir"))
+        .stdout(predicate::str::contains("--interface-dir"))
+        .stdout(predicate::str::contains("--credit"));
+}
+
+#[test]
+fn test_smoke_test_nonexistent_input() {
+    cmd()
+        .args([
+            "smoke-test",
+            "--input-dir",
+            "/nonexistent/path",
+            "--interface-dir",
+            "/nonexistent/interface",
+        ])
+        .assert()
+        .failure();
+}
+
+/// Build minimal _ru string table fixtures for smoke-test.
+fn create_ru_string_fixtures(dir: &Path) {
+    let text = "Привет";
+    let text_bytes = text.as_bytes();
+    let data_size = text_bytes.len() + 1; // +1 for null terminator
+    let mut strings_binary: Vec<u8> = Vec::new();
+    strings_binary.extend_from_slice(&1u32.to_le_bytes()); // count = 1
+    strings_binary.extend_from_slice(&(data_size as u32).to_le_bytes());
+    strings_binary.extend_from_slice(&1u32.to_le_bytes()); // id = 1
+    strings_binary.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
+    strings_binary.extend_from_slice(text_bytes);
+    strings_binary.push(0); // null terminator
+
+    // DLSTRINGS/ILSTRINGS use length-prefixed format
+    let dl_entry_size = 4 + text_bytes.len(); // length prefix + data
+    let mut dl_binary: Vec<u8> = Vec::new();
+    dl_binary.extend_from_slice(&1u32.to_le_bytes()); // count = 1
+    dl_binary.extend_from_slice(&(dl_entry_size as u32).to_le_bytes());
+    dl_binary.extend_from_slice(&1u32.to_le_bytes()); // id = 1
+    dl_binary.extend_from_slice(&0u32.to_le_bytes()); // offset = 0
+    dl_binary.extend_from_slice(&(text_bytes.len() as u32).to_le_bytes());
+    dl_binary.extend_from_slice(text_bytes);
+
+    // Create all 12 expected _ru files
+    let prefixes = [
+        "starfield_ru",
+        "blueprintships-starfield_ru",
+        "constellation_ru",
+        "oldmars_ru",
+    ];
+    let extensions = ["STRINGS", "DLSTRINGS", "ILSTRINGS"];
+
+    for prefix in &prefixes {
+        for ext in &extensions {
+            let filename = format!("{prefix}.{ext}");
+            if *ext == "STRINGS" {
+                fs::write(dir.join(&filename), &strings_binary).unwrap();
+            } else {
+                fs::write(dir.join(&filename), &dl_binary).unwrap();
+            }
+        }
+    }
+}
+
+/// Create minimal interface fixtures for smoke-test.
+fn create_interface_fixtures(dir: &Path) {
+    fs::write(
+        dir.join("fontconfig_en.txt"),
+        "fontlib \"fonts_en\"\nmap \"$ConsoleFont\" = \"Font\" Normal\n\
+         validNameChars \" ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\
+         АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя\"",
+    )
+    .unwrap();
+
+    // Minimal translate_en.txt (UTF-16LE with BOM)
+    let translate_text = "$sTestKey\tTest Value";
+    let mut translate_data: Vec<u8> = vec![0xFF, 0xFE]; // BOM
+    for unit in translate_text.encode_utf16() {
+        translate_data.extend_from_slice(&unit.to_le_bytes());
+    }
+    fs::write(dir.join("translate_en.txt"), &translate_data).unwrap();
+
+    // Minimal SWF file (just the magic bytes for validation)
+    let mut swf_data = Vec::new();
+    swf_data.extend_from_slice(b"FWS"); // SWF magic
+    swf_data.push(0x0A); // version
+    swf_data.extend_from_slice(&100u32.to_le_bytes()); // file length
+    swf_data.resize(100, 0); // pad to declared length
+    fs::write(dir.join("fonts_en.swf"), &swf_data).unwrap();
+}
+
+#[test]
+fn test_smoke_test_with_ru_files() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+    let interface = TempDir::new().unwrap();
+
+    create_ru_string_fixtures(input.path());
+    create_interface_fixtures(interface.path());
+
+    cmd()
+        .args([
+            "smoke-test",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+            "--interface-dir",
+            interface.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Smoke Test: local E2E pipeline"))
+        .stdout(predicate::str::contains("Step 1/5"))
+        .stdout(predicate::str::contains("Step 5/5"))
+        .stdout(predicate::str::contains("Publish Readiness Summary"))
+        .stdout(predicate::str::contains("Smoke test PASSED"));
+
+    // Verify all 3 artifacts were created
+    assert!(output.path().join("StarfieldRussian.esm").exists());
+    assert!(output.path().join("StarfieldRussian - Main.ba2").exists());
+    assert!(output
+        .path()
+        .join("StarfieldRussian - Interface.ba2")
+        .exists());
+}
+
+#[test]
+fn test_smoke_test_with_credit() {
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+    let interface = TempDir::new().unwrap();
+
+    create_ru_string_fixtures(input.path());
+    create_interface_fixtures(interface.path());
+
+    cmd()
+        .args([
+            "smoke-test",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+            "--interface-dir",
+            interface.path().to_str().unwrap(),
+            "--credit",
+            "TestTranslator",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Credits: present (TestTranslator)",
+        ));
+
+    assert!(output.path().join("CREDITS.txt").exists());
+}
+
+#[test]
+fn test_smoke_test_custom_output_dir() {
+    let input = TempDir::new().unwrap();
+    let interface = TempDir::new().unwrap();
+    let custom_output = TempDir::new().unwrap();
+    let custom_path = custom_output.path().join("my-dist");
+
+    create_ru_string_fixtures(input.path());
+    create_interface_fixtures(interface.path());
+
+    cmd()
+        .args([
+            "smoke-test",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            custom_path.to_str().unwrap(),
+            "--interface-dir",
+            interface.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(custom_path.to_str().unwrap()));
+
+    assert!(custom_path.join("StarfieldRussian.esm").exists());
 }

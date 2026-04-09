@@ -74,6 +74,18 @@ Execute in order:
 - Do NOT suggest INI modifications (e.g., `sResourceStartUpArchiveList`) — causes PS5 hangs
 - If `fonts_en.swf` is missing from `src/interface/`, warn that Cyrillic text will not render on PS5
 
+## Quick Smoke Test Alternative
+
+For rapid local E2E verification, use the `smoke-test` subcommand instead of running individual steps:
+```bash
+cd tools/ba2-packer && cargo run --release -- smoke-test \
+  --input-dir /path/to/Data \
+  --interface-dir ../../src/interface \
+  --output-dir ../../dist \
+  --credit "Translation Author"
+```
+This runs the full pipeline (rename → transliterate → create-esm → pack → validate) in a single command with temporary workspaces for intermediate files.
+
 ## Post-Build Documentation Check
 
 After any code changes that add or modify subcommands:
