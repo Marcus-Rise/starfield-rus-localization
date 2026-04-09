@@ -36,10 +36,10 @@ cargo build --release
 - запускает `validate`
 
 Дальше выберите нужный сценарий:
-- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-1-есть-файлы-_ru) — если у вас есть готовые файлы `_ru`
-- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-2-есть-оригинальные-файлы) — если нужно извлечь и отредактировать перевод
-- [docs/WORKFLOW.md](docs/WORKFLOW.md#сценарий-3-валидация-и-упаковка) — если `src/strings` и `src/interface` уже подготовлены
-- [docs/TRANSLIT_RELEASE_PLAYBOOK.md](docs/TRANSLIT_RELEASE_PLAYBOOK.md) — если нужен practical runbook для translit-варианта со стандартными игровыми шрифтами
+- [docs/playbooks/build-from-ru.md](docs/playbooks/build-from-ru.md) — если у вас есть готовые файлы `_ru`
+- [docs/playbooks/build-from-original-files.md](docs/playbooks/build-from-original-files.md) — если нужно извлечь и отредактировать перевод
+- [docs/playbooks/package-and-validate.md](docs/playbooks/package-and-validate.md) — если `src/strings` и `src/interface` уже подготовлены
+- [docs/playbooks/translit-standard-fonts.md](docs/playbooks/translit-standard-fonts.md) — если нужен practical runbook для translit-варианта со стандартными игровыми шрифтами
 
 ## Быстрый выбор команды
 
@@ -56,8 +56,8 @@ cargo build --release
 
 ## Куда смотреть дальше
 
-- [docs/WORKFLOW.md](docs/WORKFLOW.md) — пошаговые сценарии сборки
-- [docs/TRANSLIT_RELEASE_PLAYBOOK.md](docs/TRANSLIT_RELEASE_PLAYBOOK.md) — короткий practical playbook для translit-варианта со стандартными игровыми шрифтами
+- [docs/WORKFLOW.md](docs/WORKFLOW.md) — карта сценариев и общие заметки
+- [docs/playbooks/translit-standard-fonts.md](docs/playbooks/translit-standard-fonts.md) — короткий practical playbook для translit-варианта со стандартными игровыми шрифтами
 - [docs/PUBLISH_CREATIONS.md](docs/PUBLISH_CREATIONS.md) — публикация в Bethesda Creations
 - [docs/PUBLISH_NEXUS.md](docs/PUBLISH_NEXUS.md) — публикация на Nexus Mods
 

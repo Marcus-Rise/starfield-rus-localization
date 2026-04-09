@@ -1,5 +1,7 @@
 # Workflow: сборка мода из файлов перевода
 
+`WORKFLOW.md` теперь играет роль карты сценариев. Подробные пошаговые команды вынесены в отдельные playbook-файлы, чтобы не дублировать их между `README`, operational runbook'ами и справочными документами.
+
 ## Предварительные требования
 
 - Rust toolchain (`cargo`)
@@ -16,243 +18,44 @@ cargo build --release
 
 ## Сценарий 1: Есть файлы `_ru`
 
-Самый частый путь. У вас есть файлы перевода с суффиксом `_ru`:
-- 12 строковых таблиц (`starfield_ru.STRINGS`, `starfield_ru.DLSTRINGS`, ... )
-- `fontconfig_ru.txt`, `fonts_ru.swf`, `translate_ru.txt`
+Самый частый путь. У вас есть готовые файлы перевода с суффиксом `_ru`:
+- строковые таблицы (`*_ru.STRINGS`, `*_ru.DLSTRINGS`, `*_ru.ILSTRINGS`)
+- `translate_ru.txt`
+- при полном кириллическом варианте также `fontconfig_ru.txt` и `fonts_ru.swf`
 
-### Результат
-
-Три файла, готовые для PS5 (Bethesda Creations):
-```
-dist/StarfieldRussian.esm
-dist/StarfieldRussian - Main.ba2
-dist/StarfieldRussian - Interface.ba2
-```
-
-### Команды
-
-```bash
-# 1. Переименовать _ru → _en (PS5 загружает только _en)
-ba2-packer rename \
-  --input-dir /path/to/Data \
-  --output-dir ./build
-
-# 2. Разместить файлы в src/
-cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
-cp build/fonts_en.swf build/fontconfig_en.txt build/translate_en.txt src/interface/
-
-# 3. Создать ESM-плагин
-ba2-packer create-esm --output dist/StarfieldRussian.esm
-
-# 4. Упаковать в BA2-архивы
-ba2-packer pack \
-  --input-strings src/strings \
-  --input-interface src/interface \
-  --output-dir dist
-
-# 5. Проверить результат
-ba2-packer validate dist \
-  --source-strings src/strings \
-  --source-interface src/interface
-```
-
-Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+Что читать дальше:
+- [docs/playbooks/build-from-ru.md](playbooks/build-from-ru.md) — канонический пошаговый сценарий
+- [docs/playbooks/translit-standard-fonts.md](playbooks/translit-standard-fonts.md) — отдельный practical runbook для translit-варианта без кастомных кириллических шрифтов
 
 ---
 
 ## Сценарий 2: Есть оригинальные файлы
 
-У вас есть строковые таблицы из игры (`_en`) и вы хотите отредактировать перевод вручную.
+Используйте этот сценарий, если у вас есть оригинальные `_en` файлы игры и вы хотите подготовить перевод вручную через `extract` / `repack`.
 
-### Команды
-
-```bash
-# 1. Извлечь строковые таблицы в JSONL для редактирования
-ba2-packer extract --input /path/to/strings/ --output-dir ./extracted
-
-# 2. Отредактировать JSONL-файлы
-#    Каждая строка: {"id":12345,"text":"Hello, world!"}
-#    Замените текст на русский перевод
-
-# 3. Собрать JSONL обратно в бинарный формат
-ba2-packer repack --input ./extracted/ --output-dir ./build
-
-# 4. (Опционально) Транслитерация, если нет кириллических шрифтов
-ba2-packer transliterate \
-  --input-dir ./build \
-  --output-dir ./build \
-  --credit "Автор перевода"
-
-# 5. Разместить файлы в src/
-cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
-# Интерфейсные файлы берутся из оригинальных данных игры (не из build/)
-cp /path/to/Data/Interface/fontconfig_en.txt src/interface/
-cp /path/to/Data/Interface/translate_en.txt src/interface/
-# Шрифт fonts_en.swf нужно подготовить отдельно — см. раздел «Замена шрифтов»
-
-# 6. Создать ESM-плагин
-ba2-packer create-esm --output dist/StarfieldRussian.esm
-
-# 7. Упаковать в BA2-архивы
-ba2-packer pack \
-  --input-strings src/strings \
-  --input-interface src/interface \
-  --output-dir dist
-
-# 8. Проверить результат
-ba2-packer validate dist \
-  --source-strings src/strings \
-  --source-interface src/interface
-```
-
-Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+Что читать дальше:
+- [docs/playbooks/build-from-original-files.md](playbooks/build-from-original-files.md)
 
 ---
 
 ## Сценарий 3: Валидация и упаковка
 
-Файлы уже подготовлены и лежат в `src/`. Нужно только упаковать и проверить.
+Используйте этот сценарий, если `src/strings` и `src/interface` уже подготовлены, и нужно только собрать артефакты и проверить результат.
 
-### Команды
-
-```bash
-# 1. Создать ESM-плагин
-ba2-packer create-esm --output dist/StarfieldRussian.esm
-
-# 2. Упаковать в BA2-архивы
-ba2-packer pack \
-  --input-strings src/strings \
-  --input-interface src/interface \
-  --output-dir dist
-
-# 3. Проверить результат
-ba2-packer validate dist \
-  --source-strings src/strings \
-  --source-interface src/interface
-```
-
-Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+Что читать дальше:
+- [docs/playbooks/package-and-validate.md](playbooks/package-and-validate.md)
 
 ---
 
-## Быстрый smoke-тест (одна команда)
+## Быстрый smoke-тест
 
-Если у вас есть файлы `_ru` и вы хотите быстро проверить весь пайплайн — используйте `smoke-test`. Одна команда выполняет: rename → transliterate → create-esm → pack → validate.
+Если нужен быстрый локальный E2E check без ручного прогона всех шагов, используйте `smoke-test`. Команда выполняет: `rename -> transliterate -> create-esm -> pack -> validate`.
 
-```bash
-ba2-packer smoke-test \
-  --input-dir /path/to/Data \
-  --interface-dir src/interface \
-  --output-dir ./smoke-output \
-  --credit "Автор перевода"
-```
-
-Промежуточные файлы создаются во временной директории и не засоряют репозиторий. Если `--output-dir` не указан, артефакты сохраняются во временную папку (путь выводится в консоль). Код возврата ненулевой при ошибке валидации.
+См. `ba2-packer smoke-test --help` и используйте этот путь как fast feedback, а не как замену отдельным playbook'ам.
 
 ---
 
-## Подробный справочник
-
-Детальное описание каждого шага для всех команд.
-
-### Переименование `_ru` → `_en`
-
-PS5 загружает только файлы с суффиксом `_en`. Команда `rename` копирует файлы с переименованием и автоматически исправляет `fontlib "fonts_ru"` → `fontlib "fonts_en"` внутри fontconfig.
-
-```bash
-ba2-packer rename \
-  --input-dir /path/to/reference/Data \
-  --output-dir ./build
-```
-
-### Извлечение строковых таблиц
-
-Извлекает бинарные STRINGS/DLSTRINGS/ILSTRINGS в JSONL для редактирования:
-
-```bash
-ba2-packer extract \
-  --input build/starfield_en.STRINGS \
-  --output-dir ./extracted
-```
-
-Каждая запись — отдельная строка JSON: `{"id":12345,"text":"Hello, world!"}`. Файл сохраняется с двойным расширением (например, `starfield_en.STRINGS.jsonl`), чтобы при обратной сборке определить тип таблицы.
-
-Можно извлечь сразу всю директорию:
-```bash
-ba2-packer extract --input build/ --output-dir ./extracted
-```
-
-### Упаковка JSONL обратно в бинарный формат
-
-После редактирования JSONL-файлов — собрать обратно:
-
-```bash
-ba2-packer repack \
-  --input ./extracted/starfield_en.STRINGS.jsonl \
-  --output-dir build/
-```
-
-Или целую директорию:
-```bash
-ba2-packer repack --input ./extracted/ --output-dir build/
-```
-
-### Транслитерация кириллицы в латиницу
-
-Если невозможно использовать кириллицу (например, шрифты не поддерживают или нужен упрощённый мод без замены шрифтов), можно транслитерировать текст:
-
-```bash
-ba2-packer transliterate \
-  --input-dir build/ \
-  --output-dir build/ \
-  --credit "ZoG Forum Team"
-```
-
-Транслитерирует кириллический текст в латиницу (Привет → Privet) в строковых таблицах и `translate_en.txt`. Флаг `--credit` создаёт файл `CREDITS.txt` с указанием автора оригинального перевода.
-
-### Создание ESM-плагина
-
-```bash
-ba2-packer create-esm --output dist/StarfieldRussian.esm
-```
-
-Генерирует минимальный Starfield ESM с флагами ESM + Localized Strings, HEDR 0.96, master Starfield.esm.
-
-### Упаковка в BA2
-
-```bash
-ba2-packer pack \
-  --input-strings src/strings \
-  --input-interface src/interface \
-  --output-dir dist
-```
-
-Создаёт:
-- `dist/StarfieldRussian - Main.ba2` (строковые таблицы)
-- `dist/StarfieldRussian - Interface.ba2` (шрифты, fontconfig, UI переводы)
-
-### Валидация
-
-```bash
-ba2-packer validate dist \
-  --source-strings src/strings \
-  --source-interface src/interface
-```
-
-Проверяет 13 пунктов: ESM флаги, строковые файлы, интерфейс, BA2 заголовки, размер < 2 GB.
-
-### Установка на PS5
-
-Итоговые файлы для загрузки через Bethesda Creations:
-- `StarfieldRussian.esm`
-- `StarfieldRussian - Main.ba2`
-- `StarfieldRussian - Interface.ba2`
-
-Подробнее: [PUBLISH_CREATIONS.md](PUBLISH_CREATIONS.md)
-
----
-
-## Замена шрифтов на свободные (для публичного релиза)
+## Замена шрифтов на свободные
 
 Исходный `fonts_ru.swf` может содержать проприетарные шрифты. Для публичного релиза нужно пересобрать SWF со свободными шрифтами (SIL OFL):
 
@@ -291,11 +94,11 @@ ba2-packer validate dist \
 
 ### Что нельзя
 
-- Распространять чужой перевод без разрешения автора
-- Размещать текст чужого перевода в этом репозитории
-- Удалять или скрывать информацию об авторстве
+- распространять чужой перевод без разрешения автора
+- размещать текст чужого перевода в этом репозитории
+- удалять или скрывать информацию об авторстве
 
 ### Шрифты
 
-- Проприетарные шрифты (NB Architekt, NB Grotesk, Handwritten_Institute) **нельзя** включать в мод
-- Используйте только свободные шрифты (SIL OFL): PT Sans, Noto Sans, Caveat и др.
+- проприетарные шрифты (NB Architekt, NB Grotesk, Handwritten_Institute) **нельзя** включать в мод
+- используйте только свободные шрифты (SIL OFL): PT Sans, Noto Sans, Caveat и др.
