@@ -683,3 +683,36 @@ fn test_smoke_test_stages_input_interface_files() {
         .join("StarfieldRussian - Interface.ba2")
         .exists());
 }
+
+#[test]
+fn test_smoke_test_default_interface_dir_from_subdirectory() {
+    // Issue #41: --interface-dir default should resolve relative to repo root,
+    // not the current working directory.
+    let input = TempDir::new().unwrap();
+    let output = TempDir::new().unwrap();
+
+    create_ru_string_fixtures(input.path());
+
+    // Run from tools/ba2-packer/ (a subdirectory of the repo root) WITHOUT
+    // --interface-dir. The CLI should locate the repo root and resolve
+    // src/interface automatically.
+    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap();
+    let subdir = repo_root.join("tools").join("ba2-packer");
+
+    cmd()
+        .current_dir(&subdir)
+        .args([
+            "smoke-test",
+            "--input-dir",
+            input.path().to_str().unwrap(),
+            "--output-dir",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Smoke test PASSED"));
+}

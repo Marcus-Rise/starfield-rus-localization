@@ -8,8 +8,9 @@ mod string_table;
 mod transliterate;
 mod validate;
 
+use anyhow::Context;
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "ba2-packer")]
@@ -123,9 +124,9 @@ enum Commands {
         #[arg(long)]
         output_dir: Option<PathBuf>,
 
-        /// Path to interface files directory
-        #[arg(long, default_value = "src/interface")]
-        interface_dir: PathBuf,
+        /// Path to interface files directory (default: src/interface relative to repo root)
+        #[arg(long)]
+        interface_dir: Option<PathBuf>,
 
         /// Credit the translation author
         #[arg(long)]
@@ -176,11 +177,83 @@ fn main() -> anyhow::Result<()> {
             output_dir,
             interface_dir,
             credit,
-        } => smoke_test::run(
-            &input_dir,
-            output_dir.as_deref(),
-            &interface_dir,
-            credit.as_deref(),
-        ),
+        } => {
+            let interface_dir = match interface_dir {
+                Some(dir) => dir,
+                None => resolve_default_interface_dir()?,
+            };
+            smoke_test::run(
+                &input_dir,
+                output_dir.as_deref(),
+                &interface_dir,
+                credit.as_deref(),
+            )
+        }
+    }
+}
+
+/// Walk up from the current working directory to find the repository root
+/// (identified by a `.git` directory), then return `<root>/src/interface`.
+fn resolve_default_interface_dir() -> anyhow::Result<PathBuf> {
+    let cwd = std::env::current_dir().context("Failed to determine current directory")?;
+    find_repo_root(&cwd)
+        .map(|root| root.join("src").join("interface"))
+        .with_context(|| {
+            format!(
+                "Could not locate repository root from {}; \
+                 please specify --interface-dir explicitly",
+                cwd.display()
+            )
+        })
+}
+
+/// Walk up from `start` looking for a directory that contains `.git`.
+fn find_repo_root(start: &Path) -> Option<PathBuf> {
+    let mut current = start;
+    loop {
+        if current.join(".git").exists() {
+            return Some(current.to_path_buf());
+        }
+        current = current.parent()?;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn find_repo_root_from_subdirectory() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        fs::create_dir(root.join(".git")).unwrap();
+        let sub = root.join("a").join("b").join("c");
+        fs::create_dir_all(&sub).unwrap();
+
+        assert_eq!(find_repo_root(&sub).unwrap(), root);
+    }
+
+    #[test]
+    fn find_repo_root_at_root_itself() {
+        let tmp = TempDir::new().unwrap();
+        let root = tmp.path();
+        fs::create_dir(root.join(".git")).unwrap();
+
+        assert_eq!(find_repo_root(root).unwrap(), root);
+    }
+
+    #[test]
+    fn find_repo_root_returns_none_without_git() {
+        let tmp = TempDir::new().unwrap();
+        let sub = tmp.path().join("a").join("b");
+        fs::create_dir_all(&sub).unwrap();
+
+        // No .git anywhere under tmp — but we can't guarantee no .git above tmp,
+        // so just verify the function doesn't panic and handles the search.
+        let result = find_repo_root(&sub);
+        // If it found a .git above tmp, that's fine; the key invariant is no panic.
+        assert!(result.is_none() || result.unwrap().join(".git").exists());
     }
 }
