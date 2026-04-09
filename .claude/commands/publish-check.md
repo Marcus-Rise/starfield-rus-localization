@@ -16,12 +16,7 @@ If any are missing, report which ones and tell the user to run the `build-mod` o
 ### 2. Check artifact sizes
 
 ```bash
-du -sh dist/StarfieldRussian.esm \
-      "dist/StarfieldRussian - Main.ba2" \
-      "dist/StarfieldRussian - Interface.ba2"
-du -shc dist/StarfieldRussian.esm \
-       "dist/StarfieldRussian - Main.ba2" \
-       "dist/StarfieldRussian - Interface.ba2"
+ls -lh dist/StarfieldRussian.esm "dist/StarfieldRussian - Main.ba2" "dist/StarfieldRussian - Interface.ba2"
 ```
 
 - **Hard limit**: total MUST be < 2 GB. If exceeded — stop, Creations will reject the upload.

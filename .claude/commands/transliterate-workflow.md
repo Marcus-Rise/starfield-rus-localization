@@ -12,7 +12,7 @@ Examples:
 
 ## Steps
 
-Execute all commands from `tools/ba2-packer/`.
+All paths are relative to the repo root. Cargo commands use `cd tools/ba2-packer &&` prefix.
 
 ### 1. Build the CLI tool
 
@@ -42,9 +42,15 @@ If files already have `_en` suffix, skip this step.
 
 ```bash
 mkdir -p build/translit-input
+cp src/strings/*.STRINGS src/strings/*.DLSTRINGS src/strings/*.ILSTRINGS build/translit-input/ 2>/dev/null
+cp src/interface/translate_en.txt build/translit-input/ 2>/dev/null
 ```
 
-Copy string tables (from `build/renamed/` if step 3 ran, otherwise from `src/strings/`) and `src/interface/translate_en.txt` into `build/translit-input/`.
+If step 3 ran, copy from `build/renamed/` instead of `src/strings/`:
+
+```bash
+cp build/renamed/*.STRINGS build/renamed/*.DLSTRINGS build/renamed/*.ILSTRINGS build/translit-input/ 2>/dev/null
+```
 
 ### 5. Transliterate
 
@@ -57,11 +63,11 @@ cd tools/ba2-packer && cargo run --release -- transliterate \
 
 ### 6. Stage transliterated files
 
-Copy output back into source directories:
-
 ```bash
-cp build/transliterated/*.STRINGS build/transliterated/*.DLSTRINGS build/transliterated/*.ILSTRINGS src/strings/
-cp build/transliterated/translate_en.txt src/interface/
+cp build/transliterated/*.STRINGS src/strings/ 2>/dev/null
+cp build/transliterated/*.DLSTRINGS src/strings/ 2>/dev/null
+cp build/transliterated/*.ILSTRINGS src/strings/ 2>/dev/null
+cp build/transliterated/translate_en.txt src/interface/ 2>/dev/null
 ```
 
 ### 7. Create ESM plugin
