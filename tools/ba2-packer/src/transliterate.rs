@@ -168,6 +168,7 @@ fn write_credits(output_dir: &Path, credit: &str) -> Result<()> {
 }
 
 /// Find string table files in a directory, checking subdirectories too.
+/// When the same basename appears in multiple search directories, only the first match is kept.
 fn find_string_tables(input_dir: &Path) -> Vec<(std::path::PathBuf, StringTableType)> {
     let extensions = ["STRINGS", "DLSTRINGS", "ILSTRINGS"];
     let search_dirs = [
@@ -176,6 +177,7 @@ fn find_string_tables(input_dir: &Path) -> Vec<(std::path::PathBuf, StringTableT
         input_dir.join("Data").join("Strings"),
     ];
 
+    let mut seen_names = std::collections::HashSet::new();
     let mut found = Vec::new();
     for dir in &search_dirs {
         if !dir.is_dir() {
@@ -190,7 +192,10 @@ fn find_string_tables(input_dir: &Path) -> Vec<(std::path::PathBuf, StringTableT
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     if extensions.iter().any(|&e| e.eq_ignore_ascii_case(ext)) {
                         if let Ok(table_type) = StringTableType::from_extension(ext) {
-                            found.push((path, table_type));
+                            let name = path.file_name().unwrap().to_os_string();
+                            if seen_names.insert(name) {
+                                found.push((path, table_type));
+                            }
                         }
                     }
                 }
@@ -640,5 +645,28 @@ mod tests {
         let result = run(input.path(), output.path(), None);
         assert!(result.is_ok());
         assert!(output.path().join("translate_en.txt").exists());
+    }
+
+    #[test]
+    fn test_find_string_tables_deduplicates_by_basename() {
+        let input = TempDir::new().unwrap();
+
+        // Place same-named file in root and Strings/ subdirectory
+        let root_data = build_strings_binary(&[(1, "root")]);
+        fs::write(input.path().join("starfield_en.STRINGS"), &root_data).unwrap();
+
+        let sub_dir = input.path().join("Strings");
+        fs::create_dir(&sub_dir).unwrap();
+        let sub_data = build_strings_binary(&[(1, "subdir")]);
+        fs::write(sub_dir.join("starfield_en.STRINGS"), &sub_data).unwrap();
+
+        let found = find_string_tables(input.path());
+        // Should find only one entry (root takes priority)
+        let matching: Vec<_> = found
+            .iter()
+            .filter(|(p, _)| p.file_name().unwrap() == "starfield_en.STRINGS")
+            .collect();
+        assert_eq!(matching.len(), 1);
+        assert_eq!(matching[0].0.parent().unwrap(), input.path());
     }
 }
