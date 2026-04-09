@@ -1,15 +1,9 @@
 # Workflow: сборка мода из файлов перевода
 
-Пошаговая инструкция по сборке готового PS5-мода из файлов русской локализации.
-
 ## Предварительные требования
 
 - Rust toolchain (`cargo`)
-- Файлы перевода в формате `_ru` (собственный перевод или файлы, на использование которых есть разрешение автора):
-  - 12 строковых таблиц в `Data/Strings/`
-  - `fontconfig_ru.txt`, `fonts_ru.swf`, `translate_ru.txt` в `Data/Interface/`
-
-## Шаг 1: Сборка CLI
+- Файлы перевода (собственный перевод или файлы с разрешением автора)
 
 ```bash
 cd tools/ba2-packer
@@ -18,9 +12,136 @@ cargo build --release
 
 Бинарь: `target/release/ba2-packer`
 
-## Шаг 2: Переименование `_ru` -> `_en`
+---
 
-PS5 загружает только файлы с суффиксом `_en`. Команда `rename` копирует файлы с переименованием и автоматически исправляет `fontlib "fonts_ru"` -> `fontlib "fonts_en"` внутри fontconfig.
+## Сценарий 1: Есть файлы `_ru`
+
+Самый частый путь. У вас есть файлы перевода с суффиксом `_ru`:
+- 12 строковых таблиц (`starfield_ru.STRINGS`, `starfield_ru.DLSTRINGS`, ... )
+- `fontconfig_ru.txt`, `fonts_ru.swf`, `translate_ru.txt`
+
+### Результат
+
+Три файла, готовые для PS5 (Bethesda Creations):
+```
+dist/StarfieldRussian.esm
+dist/StarfieldRussian - Main.ba2
+dist/StarfieldRussian - Interface.ba2
+```
+
+### Команды
+
+```bash
+# 1. Переименовать _ru → _en (PS5 загружает только _en)
+ba2-packer rename \
+  --input-dir /path/to/Data \
+  --output-dir ./build
+
+# 2. Разместить файлы в src/
+cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
+cp build/fonts_en.swf build/fontconfig_en.txt build/translate_en.txt src/interface/
+
+# 3. Создать ESM-плагин
+ba2-packer create-esm --output dist/StarfieldRussian.esm
+
+# 4. Упаковать в BA2-архивы
+ba2-packer pack \
+  --input-strings src/strings \
+  --input-interface src/interface \
+  --output-dir dist
+
+# 5. Проверить результат
+ba2-packer validate dist \
+  --source-strings src/strings \
+  --source-interface src/interface
+```
+
+Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+
+---
+
+## Сценарий 2: Есть оригинальные файлы
+
+У вас есть строковые таблицы из игры (`_en`) и вы хотите отредактировать перевод вручную.
+
+### Команды
+
+```bash
+# 1. Извлечь строковые таблицы в JSONL для редактирования
+ba2-packer extract --input /path/to/strings/ --output-dir ./extracted
+
+# 2. Отредактировать JSONL-файлы
+#    Каждая строка: {"id":12345,"text":"Hello, world!"}
+#    Замените текст на русский перевод
+
+# 3. Собрать JSONL обратно в бинарный формат
+ba2-packer repack --input ./extracted/ --output-dir ./build
+
+# 4. (Опционально) Транслитерация, если нет кириллических шрифтов
+ba2-packer transliterate \
+  --input-dir ./build \
+  --output-dir ./build \
+  --credit "Автор перевода"
+
+# 5. Разместить файлы в src/
+cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
+# Интерфейсные файлы берутся из оригинальных данных игры (не из build/)
+cp /path/to/Data/Interface/fontconfig_en.txt src/interface/
+cp /path/to/Data/Interface/translate_en.txt src/interface/
+# Шрифт fonts_en.swf нужно подготовить отдельно — см. раздел «Замена шрифтов»
+
+# 6. Создать ESM-плагин
+ba2-packer create-esm --output dist/StarfieldRussian.esm
+
+# 7. Упаковать в BA2-архивы
+ba2-packer pack \
+  --input-strings src/strings \
+  --input-interface src/interface \
+  --output-dir dist
+
+# 8. Проверить результат
+ba2-packer validate dist \
+  --source-strings src/strings \
+  --source-interface src/interface
+```
+
+Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+
+---
+
+## Сценарий 3: Валидация и упаковка
+
+Файлы уже подготовлены и лежат в `src/`. Нужно только упаковать и проверить.
+
+### Команды
+
+```bash
+# 1. Создать ESM-плагин
+ba2-packer create-esm --output dist/StarfieldRussian.esm
+
+# 2. Упаковать в BA2-архивы
+ba2-packer pack \
+  --input-strings src/strings \
+  --input-interface src/interface \
+  --output-dir dist
+
+# 3. Проверить результат
+ba2-packer validate dist \
+  --source-strings src/strings \
+  --source-interface src/interface
+```
+
+Готово. Далее: [Публикация в Creations](PUBLISH_CREATIONS.md) или [Публикация на Nexus](PUBLISH_NEXUS.md).
+
+---
+
+## Подробный справочник
+
+Детальное описание каждого шага для всех команд.
+
+### Переименование `_ru` → `_en`
+
+PS5 загружает только файлы с суффиксом `_en`. Команда `rename` копирует файлы с переименованием и автоматически исправляет `fontlib "fonts_ru"` → `fontlib "fonts_en"` внутри fontconfig.
 
 ```bash
 ba2-packer rename \
@@ -28,9 +149,9 @@ ba2-packer rename \
   --output-dir ./build
 ```
 
-## Шаг 3: Извлечение строковых таблиц для редактирования (опционально)
+### Извлечение строковых таблиц
 
-Если нужно отредактировать перевод, можно извлечь строковые таблицы в JSONL:
+Извлекает бинарные STRINGS/DLSTRINGS/ILSTRINGS в JSONL для редактирования:
 
 ```bash
 ba2-packer extract \
@@ -45,7 +166,7 @@ ba2-packer extract \
 ba2-packer extract --input build/ --output-dir ./extracted
 ```
 
-## Шаг 3a: Упаковка отредактированных JSONL обратно в бинарный формат
+### Упаковка JSONL обратно в бинарный формат
 
 После редактирования JSONL-файлов — собрать обратно:
 
@@ -60,7 +181,7 @@ ba2-packer repack \
 ba2-packer repack --input ./extracted/ --output-dir build/
 ```
 
-## Шаг 3b: Транслитерация кириллицы в латиницу (опционально)
+### Транслитерация кириллицы в латиницу
 
 Если невозможно использовать кириллицу (например, шрифты не поддерживают или нужен упрощённый мод без замены шрифтов), можно транслитерировать текст:
 
@@ -73,17 +194,7 @@ ba2-packer transliterate \
 
 Транслитерирует кириллический текст в латиницу (Привет → Privet) в строковых таблицах и `translate_en.txt`. Флаг `--credit` создаёт файл `CREDITS.txt` с указанием автора оригинального перевода.
 
-## Шаг 4: Размещение файлов в `src/`
-
-```bash
-# Строковые таблицы
-cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
-
-# Интерфейс (шрифты, fontconfig, UI переводы)
-cp build/fonts_en.swf build/fontconfig_en.txt build/translate_en.txt src/interface/
-```
-
-## Шаг 5: Создание ESM-плагина
+### Создание ESM-плагина
 
 ```bash
 ba2-packer create-esm --output dist/StarfieldRussian.esm
@@ -91,7 +202,7 @@ ba2-packer create-esm --output dist/StarfieldRussian.esm
 
 Генерирует минимальный Starfield ESM с флагами ESM + Localized Strings, HEDR 0.96, master Starfield.esm.
 
-## Шаг 6: Упаковка в BA2
+### Упаковка в BA2
 
 ```bash
 ba2-packer pack \
@@ -104,7 +215,7 @@ ba2-packer pack \
 - `dist/StarfieldRussian - Main.ba2` (строковые таблицы)
 - `dist/StarfieldRussian - Interface.ba2` (шрифты, fontconfig, UI переводы)
 
-## Шаг 7: Валидация
+### Валидация
 
 ```bash
 ba2-packer validate dist \
@@ -114,7 +225,7 @@ ba2-packer validate dist \
 
 Проверяет 13 пунктов: ESM флаги, строковые файлы, интерфейс, BA2 заголовки, размер < 2 GB.
 
-## Шаг 8: Установка на PS5
+### Установка на PS5
 
 Итоговые файлы для загрузки через Bethesda Creations:
 - `StarfieldRussian.esm`
@@ -122,6 +233,8 @@ ba2-packer validate dist \
 - `StarfieldRussian - Interface.ba2`
 
 Подробнее: [PUBLISH_CREATIONS.md](PUBLISH_CREATIONS.md)
+
+---
 
 ## Замена шрифтов на свободные (для публичного релиза)
 
