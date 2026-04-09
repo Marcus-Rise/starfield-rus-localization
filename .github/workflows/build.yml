@@ -82,7 +82,7 @@ jobs:
 
       - name: Validate (if artifacts exist)
         run: |
-          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ]; then
+          if [ -f "dist/StarfieldRussian.esm" ] || [ -f "dist/StarfieldRussian - Main.ba2" ] || [ -f "dist/StarfieldRussian - Interface.ba2" ]; then
             ./tools/ba2-packer/target/release/ba2-packer validate dist \
               --source-strings src/strings \
               --source-interface src/interface
