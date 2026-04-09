@@ -19,9 +19,16 @@ const EXPECTED_STRING_FILES: &[&str] = &[
 
 const MAX_MOD_SIZE_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GB
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CheckStatus {
+    Pass,
+    Fail,
+    Warn,
+}
+
 struct ValidationResult {
     check: String,
-    passed: bool,
+    status: CheckStatus,
     detail: String,
 }
 
@@ -29,7 +36,7 @@ impl ValidationResult {
     fn pass(check: &str) -> Self {
         Self {
             check: check.to_string(),
-            passed: true,
+            status: CheckStatus::Pass,
             detail: "OK".to_string(),
         }
     }
@@ -37,9 +44,30 @@ impl ValidationResult {
     fn fail(check: &str, detail: &str) -> Self {
         Self {
             check: check.to_string(),
-            passed: false,
+            status: CheckStatus::Fail,
             detail: detail.to_string(),
         }
+    }
+
+    fn warn(check: &str, detail: &str) -> Self {
+        Self {
+            check: check.to_string(),
+            status: CheckStatus::Warn,
+            detail: detail.to_string(),
+        }
+    }
+
+    #[cfg(test)]
+    fn is_passed(&self) -> bool {
+        self.status == CheckStatus::Pass
+    }
+
+    fn is_failed(&self) -> bool {
+        self.status == CheckStatus::Fail
+    }
+
+    fn is_warning(&self) -> bool {
+        self.status == CheckStatus::Warn
     }
 }
 
@@ -307,6 +335,22 @@ fn check_total_size(dist_dir: &Path) -> ValidationResult {
     }
 }
 
+/// Warn if Interface BA2 exists — fonts may not be preloaded on PS5
+fn warn_font_preloading(dist_dir: &Path) -> ValidationResult {
+    let check = "Font preloading (sResourceStartUpArchiveList)";
+    let interface_ba2 = dist_dir.join("StarfieldRussian - Interface.ba2");
+    if interface_ba2.exists() {
+        ValidationResult::warn(
+            check,
+            "Interface BA2 found — on PS5 fonts may not be preloaded at startup. \
+             Creations must register the archive in sResourceStartUpArchiveList; \
+             manual INI edits on PS5 cause system hangs logged by Sony (risk of hardware ban)",
+        )
+    } else {
+        ValidationResult::pass(check)
+    }
+}
+
 fn collect_checks(
     dist_dir: &Path,
     source_strings: Option<&Path>,
@@ -391,6 +435,7 @@ fn collect_checks(
     }
 
     results.push(check_total_size(dist_dir));
+    results.push(warn_font_preloading(dist_dir));
     Ok(results)
 }
 
@@ -447,20 +492,29 @@ pub fn run(
 
     // Print results
     let mut failed = 0;
+    let mut warnings = 0;
     for r in &results {
-        let status = if r.passed { "PASS" } else { "FAIL" };
-        let icon = if r.passed { "\u{2713}" } else { "\u{2717}" };
+        let (icon, status) = match r.status {
+            CheckStatus::Pass => ("\u{2713}", "PASS"),
+            CheckStatus::Fail => ("\u{2717}", "FAIL"),
+            CheckStatus::Warn => ("\u{26A0}", "WARN"),
+        };
         println!("[{icon} {status}] {} — {}", r.check, r.detail);
-        if !r.passed {
+        if r.is_failed() {
             failed += 1;
+        }
+        if r.is_warning() {
+            warnings += 1;
         }
     }
 
-    println!(
-        "\n{}/{} checks passed",
-        results.len() - failed,
-        results.len()
-    );
+    let total = results.len();
+    let passed = total - failed - warnings;
+    if warnings > 0 {
+        println!("\n{passed}/{total} checks passed, {warnings} warning(s)");
+    } else {
+        println!("\n{passed}/{total} checks passed");
+    }
 
     if failed > 0 {
         anyhow::bail!("{failed} validation check(s) failed");
@@ -480,7 +534,7 @@ mod tests {
         data[0..4].copy_from_slice(b"TES4");
         data[8] = 0x81; // ESM (0x01) + Localized (0x80)
         let result = check_esm_flag(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -489,7 +543,7 @@ mod tests {
         data[0..4].copy_from_slice(b"TES4");
         data[8] = 0x80; // Only Localized, no ESM
         let result = check_esm_flag(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -497,7 +551,7 @@ mod tests {
         let mut data = vec![0u8; 32];
         data[8] = 0x81;
         let result = check_localized_flag(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -505,7 +559,7 @@ mod tests {
         let mut data = vec![0u8; 32];
         data[8] = 0x01; // Only ESM, no Localized
         let result = check_localized_flag(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -519,7 +573,7 @@ mod tests {
         let version_bytes = 0.96_f32.to_le_bytes();
         data[30..34].copy_from_slice(&version_bytes);
         let result = check_hedr_version(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -531,7 +585,7 @@ mod tests {
         let version_bytes = 1.0_f32.to_le_bytes();
         data[30..34].copy_from_slice(&version_bytes);
         let result = check_hedr_version(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -540,14 +594,14 @@ mod tests {
         data.extend_from_slice(b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
         data.extend_from_slice(b"MAST\x0E\x00Starfield.esm\x00");
         let result = check_master_reference(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_master_reference_missing() {
         let data = vec![0u8; 100];
         let result = check_master_reference(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -562,28 +616,28 @@ mod tests {
         data.extend_from_slice(&0u32.to_le_bytes()); // offset
         data.extend_from_slice(b"test\0"); // string data
         let result = check_string_file(&data, "test.STRINGS");
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_string_file_too_small() {
         let data = vec![0u8; 4]; // only 4 bytes, need 8
         let result = check_string_file(&data, "test.STRINGS");
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
     fn test_check_translate_encoding_valid() {
         let data = vec![0xFF, 0xFE, 0x24, 0x00]; // BOM + '$'
         let result = check_translate_encoding(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_translate_encoding_wrong_bom() {
         let data = vec![0xFE, 0xFF, 0x24, 0x00]; // Wrong BOM (big-endian)
         let result = check_translate_encoding(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -594,7 +648,7 @@ mod tests {
             data.extend_from_slice(&c.to_le_bytes());
         }
         let result = check_translate_format(&data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -604,56 +658,56 @@ mod tests {
             data.extend_from_slice(&c.to_le_bytes());
         }
         let result = check_translate_format(&data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
     fn test_check_fontconfig_fontlib_valid() {
         let data = b"fontlib \"fonts_en\"\nmap \"$MAIN\" = \"Font\" Normal";
         let result = check_fontconfig_fontlib(data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_fontconfig_fontlib_missing() {
         let data = b"fontlib \"fonts_ru\"";
         let result = check_fontconfig_fontlib(data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
     fn test_check_fontconfig_cyrillic_valid() {
         let data = "validNameChars \"АБВЯабвя\"".as_bytes();
         let result = check_fontconfig_cyrillic(data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_fontconfig_cyrillic_missing() {
         let data = b"validNameChars \"ABCDabcd\"";
         let result = check_fontconfig_cyrillic(data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
     fn test_check_swf_magic_fws() {
         let data = b"FWS\x09\x00\x00\x00\x00";
         let result = check_swf_magic(data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_swf_magic_cws() {
         let data = b"CWS\x09\x00\x00\x00\x00";
         let result = check_swf_magic(data);
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
     fn test_check_swf_magic_invalid() {
         let data = b"PDF-1.5";
         let result = check_swf_magic(data);
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -662,7 +716,7 @@ mod tests {
         data[0..4].copy_from_slice(b"BTDX");
         data[4..8].copy_from_slice(&2u32.to_le_bytes());
         let result = check_ba2_header(&data, "test.ba2");
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -671,7 +725,7 @@ mod tests {
         data[0..4].copy_from_slice(b"BTDX");
         data[4..8].copy_from_slice(&3u32.to_le_bytes());
         let result = check_ba2_header(&data, "test.ba2");
-        assert!(result.passed);
+        assert!(result.is_passed());
     }
 
     #[test]
@@ -680,14 +734,14 @@ mod tests {
         data[0..4].copy_from_slice(b"BTDX");
         data[4..8].copy_from_slice(&1u32.to_le_bytes()); // FO4 version, not SF
         let result = check_ba2_header(&data, "test.ba2");
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
     fn test_check_ba2_header_wrong_magic() {
         let data = b"BSA\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00";
         let result = check_ba2_header(data, "test.ba2");
-        assert!(!result.passed);
+        assert!(result.is_failed());
     }
 
     #[test]
@@ -700,7 +754,7 @@ mod tests {
             .filter(|r| r.check.starts_with("BA2 present"))
             .collect();
         assert_eq!(ba2_fails.len(), 2, "Should fail for both missing BA2s");
-        assert!(ba2_fails.iter().all(|r| !r.passed));
+        assert!(ba2_fails.iter().all(|r| r.is_failed()));
     }
 
     #[test]
@@ -725,8 +779,56 @@ mod tests {
             .collect();
         assert_eq!(string_results.len(), 12);
         assert!(
-            string_results.iter().all(|r| r.passed),
+            string_results.iter().all(|r| r.is_passed()),
             "All string file checks should pass with source dir"
         );
+    }
+
+    #[test]
+    fn test_warn_constructor() {
+        let result = ValidationResult::warn("test", "detail");
+        assert!(result.is_warning());
+        assert!(!result.is_passed());
+        assert!(!result.is_failed());
+    }
+
+    #[test]
+    fn test_check_status_variants() {
+        let pass = ValidationResult::pass("p");
+        let fail = ValidationResult::fail("f", "d");
+        let warn = ValidationResult::warn("w", "d");
+
+        assert!(pass.is_passed());
+        assert!(!pass.is_failed());
+        assert!(!pass.is_warning());
+
+        assert!(fail.is_failed());
+        assert!(!fail.is_passed());
+        assert!(!fail.is_warning());
+
+        assert!(warn.is_warning());
+        assert!(!warn.is_passed());
+        assert!(!warn.is_failed());
+    }
+
+    #[test]
+    fn test_warn_font_preloading_present() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        fs::write(
+            dist.path().join("StarfieldRussian - Interface.ba2"),
+            b"BTDX",
+        )
+        .unwrap();
+        let result = warn_font_preloading(dist.path());
+        assert!(result.is_warning());
+    }
+
+    #[test]
+    fn test_warn_font_preloading_absent() {
+        use tempfile::TempDir;
+        let dist = TempDir::new().unwrap();
+        let result = warn_font_preloading(dist.path());
+        assert!(result.is_passed());
     }
 }
