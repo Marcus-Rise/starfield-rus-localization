@@ -1,6 +1,9 @@
 mod create_esm;
+mod extract;
 mod pack;
 mod rename;
+mod repack;
+mod string_table;
 mod validate;
 
 use clap::{Parser, Subcommand};
@@ -45,6 +48,28 @@ enum Commands {
         source_interface: Option<PathBuf>,
     },
 
+    /// Extract binary string tables to human-readable JSONL format
+    Extract {
+        /// Input: a single string table file or directory containing them
+        #[arg(long)]
+        input: PathBuf,
+
+        /// Output directory for JSONL files
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+
+    /// Repack JSONL string files back into binary string table format
+    Repack {
+        /// Input: a single JSONL file or directory containing them
+        #[arg(long)]
+        input: PathBuf,
+
+        /// Output directory for binary string table files
+        #[arg(long)]
+        output_dir: PathBuf,
+    },
+
     /// Create a minimal StarfieldRussian.esm plugin
     CreateEsm {
         /// Output path (file or directory)
@@ -82,6 +107,8 @@ fn main() -> anyhow::Result<()> {
             source_strings.as_deref(),
             source_interface.as_deref(),
         ),
+        Commands::Extract { input, output_dir } => extract::run(&input, &output_dir),
+        Commands::Repack { input, output_dir } => repack::run(&input, &output_dir),
         Commands::CreateEsm { output } => create_esm::run(&output),
         Commands::Rename {
             input_dir,

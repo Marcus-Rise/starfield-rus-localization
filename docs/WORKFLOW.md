@@ -28,7 +28,39 @@ ba2-packer rename \
   --output-dir ./build
 ```
 
-## Шаг 3: Размещение файлов в `src/`
+## Шаг 3: Извлечение строковых таблиц для редактирования (опционально)
+
+Если нужно отредактировать перевод, можно извлечь строковые таблицы в JSONL:
+
+```bash
+ba2-packer extract \
+  --input build/starfield_en.STRINGS \
+  --output-dir ./extracted
+```
+
+Каждая запись — отдельная строка JSON: `{"id":12345,"text":"Hello, world!"}`. Файл сохраняется с двойным расширением (например, `starfield_en.STRINGS.jsonl`), чтобы при обратной сборке определить тип таблицы.
+
+Можно извлечь сразу всю директорию:
+```bash
+ba2-packer extract --input build/ --output-dir ./extracted
+```
+
+## Шаг 3a: Упаковка отредактированных JSONL обратно в бинарный формат
+
+После редактирования JSONL-файлов — собрать обратно:
+
+```bash
+ba2-packer repack \
+  --input ./extracted/starfield_en.STRINGS.jsonl \
+  --output-dir build/
+```
+
+Или целую директорию:
+```bash
+ba2-packer repack --input ./extracted/ --output-dir build/
+```
+
+## Шаг 4: Размещение файлов в `src/`
 
 ```bash
 # Строковые таблицы
@@ -38,7 +70,7 @@ cp build/*_en.STRINGS build/*_en.DLSTRINGS build/*_en.ILSTRINGS src/strings/
 cp build/fonts_en.swf build/fontconfig_en.txt build/translate_en.txt src/interface/
 ```
 
-## Шаг 4: Создание ESM-плагина
+## Шаг 5: Создание ESM-плагина
 
 ```bash
 ba2-packer create-esm --output dist/StarfieldRussian.esm
@@ -46,7 +78,7 @@ ba2-packer create-esm --output dist/StarfieldRussian.esm
 
 Генерирует минимальный Starfield ESM с флагами ESM + Localized Strings, HEDR 0.96, master Starfield.esm.
 
-## Шаг 5: Упаковка в BA2
+## Шаг 6: Упаковка в BA2
 
 ```bash
 ba2-packer pack \
@@ -59,7 +91,7 @@ ba2-packer pack \
 - `dist/StarfieldRussian - Main.ba2` (строковые таблицы)
 - `dist/StarfieldRussian - Interface.ba2` (шрифты, fontconfig, UI переводы)
 
-## Шаг 6: Валидация
+## Шаг 7: Валидация
 
 ```bash
 ba2-packer validate dist \
@@ -69,7 +101,7 @@ ba2-packer validate dist \
 
 Проверяет 13 пунктов: ESM флаги, строковые файлы, интерфейс, BA2 заголовки, размер < 2 GB.
 
-## Шаг 7: Установка на PS5
+## Шаг 8: Установка на PS5
 
 Итоговые файлы для загрузки через Bethesda Creations:
 - `StarfieldRussian.esm`
